@@ -1,0 +1,25 @@
+{
+    "name": "moder",
+    "description": "Copies or converts the entire contents of the data file on unit nin to unit nout.",
+    "cards": [
+      {
+        "name": "Card 1",
+        "description": "Unit numbers configuration for the moder module.",
+        "parameters": [
+          {
+            "name": "nin",
+            "description": "Input unit number. Positive for formatted, negative for binary. Range: 20-99.",
+            "type": "int",
+            "default": 20
+          },
+          {
+            "name": "nout",
+            "description": "Output unit number. Positive for formatted, negative for binary. Range: 20-99.",
+            "type": "int",
+            "default": -21
+          }
+        ]
+      }
+    ]
+  }
+  
