@@ -1,0 +1,79 @@
+{
+    "name": "reconr",
+    "description": "Reconstructs pointwise cross sections from resonance parameters and linearizes.",
+    "cards": [
+      {
+        "name": "Mandatory",
+        "description": "Mandatory parameters for reconr",
+        "parameters": [
+          {
+            "name": "nendf",
+            "description": "Unit number for input ENDF tape",
+            "type": "int",
+            "default": 20,
+            "help": "Integer unit number for the ENDF input file. Typically 20 for input."
+          },
+          {
+            "name": "npend",
+            "description": "Unit number for output PEND file",
+            "type": "int",
+            "default": 21,
+            "help": "Integer unit number for the PEND output file. Typically 21 for output."
+          },
+          {
+            "name": "material",
+            "description": "The material to be reconstructed (MAT number). Will be chosen by isotope name.",
+            "type": "isotope",
+            "default": "U235",
+            "help": "Select the isotope. The corresponding MAT number will be written automatically."
+          },
+          {
+            "name": "tolerance",
+            "description": "Fractional reconstruction tolerance (err in manual).",
+            "type": "float",
+            "default": 0.001,
+            "help": "A small fraction representing the tolerance for reconstruction."
+          }
+        ]
+      },
+      {
+        "name": "Optional",
+        "description": "Optional parameters for advanced users",
+        "parameters": [
+          {
+            "name": "errmax",
+            "description": "Fractional reconstruction tolerance used when resonance-integral error criterion is satisfied.",
+            "type": "float",
+            "default": null,
+            "help": "If provided, sets errmax and forces tempr=0."
+          },
+          {
+            "name": "errint",
+            "description": "Maximum resonance-integral error per grid point.",
+            "type": "float",
+            "default": null,
+            "help": "If provided, sets a stricter error criterion."
+          }
+        ]
+      },
+      {
+        "name": "Automatic",
+        "description": "Parameters that are automatically generated and not shown to user.",
+        "parameters": [
+          {
+            "name": "label",
+            "description": "Label for the new PENDF file.",
+            "type": "auto",
+            "value_from_isotope": "reconstructed data for {isotope}"
+          },
+          {
+            "name": "tempr",
+            "description": "Temperature set automatically if errmax is used.",
+            "type": "auto",
+            "default": null
+          }
+        ]
+      }
+    ]
+  }
+  

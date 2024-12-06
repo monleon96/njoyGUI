@@ -14,9 +14,16 @@ class ModuleModel:
         self.description = data.get("description", "")
         self.cards = data.get("cards", [])
 
-
 def load_module(module_name):
     filepath = os.path.join("modules", f"{module_name}.json")
     model = ModuleModel(module_name)
     model.load_from_file(filepath)
     return model
+
+def load_isotopes():
+    filepath = "isotopes.json"
+    if os.path.exists(filepath):
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        return data
+    return {}

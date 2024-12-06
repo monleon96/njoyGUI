@@ -1,36 +1,57 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox
+from PyQt5.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QScrollArea, 
+    QWidget, QGroupBox, QFrame, QSizePolicy
+)
+from PyQt5.QtCore import Qt
 
 class ModuleSelectionDialog(QDialog):
     def __init__(self, modules_available, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Select Module")
+        self.resize(400, 300)  # Make the dialog bigger
         self.modules_available = modules_available
         self.selected_module = None
+
         self.init_ui()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
 
-        label = QLabel("Choose a module to add:")
-        layout.addWidget(label)
+        title_label = QLabel("Choose a module to add:")
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        layout.addWidget(title_label)
 
-        self.combo = QComboBox()
-        for m in self.modules_available:
-            self.combo.addItem(m)
-        layout.addWidget(self.combo)
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        layout.addWidget(scroll_area)
 
-        btn_layout = QHBoxLayout()
-        ok_btn = QPushButton("OK")
-        ok_btn.clicked.connect(self.ok_pressed)
+        container = QWidget()
+        scroll_layout = QVBoxLayout(container)
+        scroll_layout.setSpacing(10)
+
+        # Create a nice button or frame for each module
+        for mod in self.modules_available:
+            mod_button = QPushButton(mod)
+            mod_button.setStyleSheet("font-size: 14px; padding: 10px;")
+            mod_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+            mod_button.clicked.connect(lambda checked, m=mod: self.select_module(m))
+            scroll_layout.addWidget(mod_button)
+
+        # Add some space at the bottom
+        scroll_layout.addStretch()
+        scroll_area.setWidget(container)
+
+        # Optional: a cancel button at the bottom
+        bottom_layout = QHBoxLayout()
         cancel_btn = QPushButton("Cancel")
         cancel_btn.clicked.connect(self.reject)
-        btn_layout.addWidget(ok_btn)
-        btn_layout.addWidget(cancel_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(cancel_btn)
+        layout.addLayout(bottom_layout)
 
-        layout.addLayout(btn_layout)
-
-    def ok_pressed(self):
-        self.selected_module = self.combo.currentText()
+    def select_module(self, module_name):
+        self.selected_module = module_name
         self.accept()
 
     def get_selected_module(self):

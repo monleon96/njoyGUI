@@ -1,11 +1,10 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-    QMessageBox, QSplitter, QListWidget, QListWidgetItem, QFrame, QFileDialog, 
-    QAction
+    QMessageBox, QSplitter, QScrollArea, QTextEdit, QFileDialog
 )
 from PyQt5.QtCore import Qt
 
-from model import load_module
+from model import load_module, load_isotopes
 from gui.module_item import ModuleItem
 from gui.module_selection_dialog import ModuleSelectionDialog
 from gui.parameter_dialog import ParameterDialog
@@ -16,15 +15,15 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("NJOY Input Builder")
         self.setGeometry(100, 100, 800, 600)
         
-        # List of added modules: each element will be a dict
-        # with keys: {'name': str, 'parameters': dict, 'cards': list}
         self.modules_available = modules_available
-        self.added_modules = []  # Each element: {"name":..., "cards":..., "parameters": {...}}
+        self.added_modules = []
+        
+        # Load isotopes once
+        self.isotopes = load_isotopes()
 
         self.init_ui()
 
     def init_ui(self):
-        # Main container widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -33,39 +32,29 @@ class MainWindow(QMainWindow):
         splitter = QSplitter()
         main_layout.addWidget(splitter)
 
-        # Left side: module list and add button
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         self.add_module_btn = QPushButton("Add Module")
         self.add_module_btn.clicked.connect(self.add_module)
         left_layout.addWidget(self.add_module_btn)
 
-        # Container for module items
         self.module_list_container = QVBoxLayout()
         self.module_list_container.setSpacing(5)
         self.module_list_container.setAlignment(Qt.AlignTop)
 
-        # A frame with a scroll area might be ideal for many modules. For simplicity:
-        scroll_frame = QFrame()
+        scroll_frame = QWidget()
         scroll_frame.setLayout(self.module_list_container)
-
-        # Make it scrollable if many modules:
-        from PyQt5.QtWidgets import QScrollArea
         scroll_area = QScrollArea()
         scroll_area.setWidget(scroll_frame)
         scroll_area.setWidgetResizable(True)
         left_layout.addWidget(scroll_area)
 
-        # Generate NJOY Input button
         self.generate_btn = QPushButton("Generate NJOY Input")
         self.generate_btn.clicked.connect(self.generate_njoy_input)
         left_layout.addWidget(self.generate_btn)
 
-        # Add left_widget to splitter
         splitter.addWidget(left_widget)
 
-        # Right side: preview text
-        from PyQt5.QtWidgets import QTextEdit
         self.preview_text = QTextEdit()
         self.preview_text.setReadOnly(True)
         self.update_preview()
@@ -78,14 +67,11 @@ class MainWindow(QMainWindow):
         if dialog.exec_():
             selected_module = dialog.get_selected_module()
             if selected_module:
-                # Load module definition
                 mod_model = load_module(selected_module)
-                # Initialize parameters dict from defaults
                 parameters = {}
                 for card in mod_model.cards:
                     for param in card["parameters"]:
                         parameters[param["name"]] = param.get("default", None)
-                
                 module_dict = {
                     "name": mod_model.module_name,
                     "cards": mod_model.cards,
@@ -106,7 +92,6 @@ class MainWindow(QMainWindow):
         item_widget.show()
 
     def remove_module(self, item_widget):
-        # Find index of this module in added_modules
         idx = self.index_of_module_item(item_widget)
         if idx >= 0:
             self.added_modules.pop(idx)
@@ -117,26 +102,23 @@ class MainWindow(QMainWindow):
     def move_module_up(self, item_widget):
         idx = self.index_of_module_item(item_widget)
         if idx > 0:
-            # swap
             self.added_modules[idx], self.added_modules[idx-1] = self.added_modules[idx-1], self.added_modules[idx]
-            # Reorder widgets
             self.reorder_module_items()
             self.update_preview()
 
     def move_module_down(self, item_widget):
         idx = self.index_of_module_item(item_widget)
         if idx < len(self.added_modules)-1:
-            # swap
             self.added_modules[idx], self.added_modules[idx+1] = self.added_modules[idx+1], self.added_modules[idx]
-            # Reorder widgets
             self.reorder_module_items()
             self.update_preview()
 
     def reorder_module_items(self):
-        # Clear and re-add all items in order
+        # Remove all widgets and re-add them in the new order
         for i in reversed(range(self.module_list_container.count())):
-            widget = self.module_list_container.itemAt(i).widget()
-            self.module_list_container.removeWidget(widget)
+            w = self.module_list_container.itemAt(i).widget()
+            self.module_list_container.removeWidget(w)
+            w.deleteLater()
         for mod in self.added_modules:
             self.add_module_item(mod)
 
@@ -153,27 +135,56 @@ class MainWindow(QMainWindow):
             mod_dict = self.added_modules[idx]
             dialog = ParameterDialog(mod_dict["name"], mod_dict["cards"], mod_dict["parameters"], self)
             if dialog.exec_():
-                # Update parameters
                 updated_params = dialog.get_parameters()
                 mod_dict["parameters"] = updated_params
                 self.update_preview()
 
     def update_preview(self):
-        # Construct NJOY input from added_modules
         lines = []
         for mod in self.added_modules:
-            lines.append(mod["name"])
-            # For this example, we know moder has "nin" and "nout"
-            # In general, you'd loop over cards and parameters.
-            # Just for demonstration:
-            nin = mod["parameters"].get("nin", 20)
-            nout = mod["parameters"].get("nout", -21)
-            lines.append(f"{nin} {nout} /")
+            name = mod["name"]
+            p = mod["parameters"]
+            if name == "moder":
+                nin = p.get("nin", 20)
+                nout = p.get("nout", -21)
+                lines.append("moder")
+                lines.append(f"{nin} {nout} /")
+
+            elif name == "reconr":
+                nendf = p.get("nendf", 20)
+                npend = p.get("npend", 21)
+                isotope = p.get("material", "U235")
+                tolerance = p.get("tolerance", 0.001)
+                
+                mat = self.isotopes.get(isotope, 9999)
+                errmax = p.get("errmax", None)
+                errint = p.get("errint", None)
+
+                label = f"reconstructed data for {isotope}"
+                tempr = 0 if errmax is not None else 0
+
+                lines.append("reconr")
+                lines.append(f"{nendf} {npend} /")
+                lines.append(f"'{label}' /")
+                lines.append(f"{mat} 0 0 /")
+
+                # card 4
+                card4 = f"{tolerance}"
+                if tempr is not None:
+                    card4 += f" {tempr}"
+                if errmax is not None:
+                    card4 += f" {errmax}"
+                if errint is not None:
+                    card4 += f" {errint}"
+                card4 += " /"
+                lines.append(card4)
+
+                lines.append("0 /")
+
         preview_text = "\n".join(lines)
         self.preview_text.setText(preview_text)
 
     def generate_njoy_input(self):
-        # Ask user where to save the file
         file_dialog = QFileDialog.getSaveFileName(self, "Save NJOY Input", "input.njoy", "All Files (*.*)")
         if file_dialog[0]:
             with open(file_dialog[0], 'w') as f:

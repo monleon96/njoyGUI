@@ -16,7 +16,7 @@
             "name": "nout",
             "description": "Output unit number. Positive for formatted, negative for binary. Range: 20-99.",
             "type": "int",
-            "default": -21
+            "default": -30
           }
         ]
       }
