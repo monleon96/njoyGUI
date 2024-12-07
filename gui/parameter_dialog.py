@@ -133,10 +133,16 @@ class ParameterDialog(QDialog):
             line.setValidator(int_validator)
 
         elif p_type == "float":
-            # Float validator
-            float_regex = QRegExp(r'^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$')
+            # A regex that matches a positive float, optionally in scientific notation
+            float_regex = QRegExp(r'^\d+(\.\d+)?([eE][+-]?\d+)?$')
             val = QRegExpValidator(float_regex, self)
             line.setValidator(val)
+
+            # If there's a default value, set it
+            if p_value is not None:
+                line.setText(str(p_value))
+            else:
+                line.setText("")
 
         elif p_type == "isotope":
             # For isotopes, use QComboBox
@@ -215,14 +221,46 @@ class ParameterDialog(QDialog):
         msg_box.exec_()
 
     def accept_parameters(self):
-        # Collect all inputs
         for p_name, (widget, help_text) in self.param_widgets.items():
             if isinstance(widget, QLineEdit):
-                value = widget.text().strip()
-                if value == "":
+                value_str = widget.text().strip()
+                if value_str == "":
                     self.parameters.pop(p_name, None)
                 else:
-                    self.parameters[p_name] = value
+                    p_def = self.find_parameter_definition(p_name)
+                    p_type = p_def["type"]
+                    constraints = p_def.get("constraints", {})
+
+                    if p_type == "int":
+                        # value_str should pass the validator, so it's an integer
+                        value = int(value_str)
+                        # Check min/max constraints
+                        if "min" in constraints and value < constraints["min"]:
+                            self.show_error(f"{p_name} must be >= {constraints['min']}")
+                            return
+                        if "max" in constraints and value > constraints["max"]:
+                            self.show_error(f"{p_name} must be <= {constraints['max']}")
+                            return
+                        self.parameters[p_name] = value
+
+                    elif p_type == "float":
+                        try:
+                            value = float(value_str)
+                        except ValueError:
+                            self.show_error(f"{p_name} is not a valid number.")
+                            return
+                        # Check min/max constraints
+                        if "min" in constraints and value < constraints["min"]:
+                            self.show_error(f"{p_name} must be >= {constraints['min']}")
+                            return
+                        if "max" in constraints and value > constraints["max"]:
+                            self.show_error(f"{p_name} must be <= {constraints['max']}")
+                            return
+                        self.parameters[p_name] = value
+
+                    else:
+                        # For isotope or other types, just store the value as is
+                        self.parameters[p_name] = value_str
 
             elif isinstance(widget, QComboBox):
                 value = widget.currentText().strip()
@@ -235,6 +273,16 @@ class ParameterDialog(QDialog):
 
     def get_parameters(self):
         return self.parameters
+
+    def find_parameter_definition(self, p_name):
+        for card in self.cards:
+            for param in card["parameters"]:
+                if param["name"] == p_name:
+                    return param
+        return None
+
+    def show_error(self, message):
+        QMessageBox.warning(self, "Invalid Input", message)
 
     def open_pdf(self):
         pdf_path = f"resources/{self.module_name}.pdf"

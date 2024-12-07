@@ -1,27 +1,23 @@
 {
-    "name": "MODER",
-    "description": "<b>MODER</b>: Copies or converts the entire contents of the data file on unit nin to unit nout.",
-    "cards": [
-      {
-        "name": "Mandatory",
-        "description": "Unit numbers configuration for the moder module.",
-        "parameters": [
-          {
-            "name": "nin",
-            "description": "Input unit number. Positive for formatted, negative for binary. Range: 20-99.",
-            "type": "int",
-            "default": 20,
-            "help": "Integer unit number for the ENDF input file. Typically 20 for input."
-          },
-          {
-            "name": "nout",
-            "description": "Output unit number. Positive for formatted, negative for binary. Range: 20-99.",
-            "type": "int",
-            "default": -30,
-            "help": "Integer unit number for the ENDF input file. Typically 20 for input."
-          }
-        ]
-      }
-    ]
-  }
-  
+  "name": "MODER",
+  "description": "<b>MODER</b><br><br>The MODER module is used to convert ENDF, PENDF, and GENDF tapes from the NJOY blocked-binary mode to formatted mode (ASCII on modern computers), and vice versa. It can also be used to copy data from one logical unit to another without change of mode, or to make a new tape containing selected materials from one or more ENDF, PENDF, or GENDF tapes. MODER handles ENDF-4 through ENDF-6 formats, plus special-purpose formats developed for NJOY, such as the GROUPR and ERRORR output formats.",
+  "cards": [
+    {
+      "name": "Mandatory",
+      "parameters": [
+        {
+          "name": "nin",
+          "type": "int",
+          "default": 20,
+          "help": "<b>'nin'</b><br><br>Input unit number. Positive for formatted, negative for binary."
+        },
+        {
+          "name": "nout",
+          "type": "int",
+          "default": -30,
+          "help": "<b>nout</b>: Output unit number. Positive for formatted, negative for binary."
+        }
+      ]
+    }
+  ]
+}
