@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import (
     QSizePolicy
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
 
 from model import load_module, load_isotopes
 from gui.module_item import ModuleItem
@@ -18,7 +17,7 @@ class MainWindow(QMainWindow):
     def __init__(self, modules_available):
         super().__init__()
         self.setWindowTitle("NJOY Input Builder")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 900, 700)
         
         self.modules_available = modules_available
         self.added_modules = []
@@ -90,7 +89,7 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 2)
 
-        splitter.setSizes([300, 500])
+        splitter.setSizes([330, 570])
 
     def add_module(self):
         dialog = ModuleSelectionDialog(self.modules_available, self)
@@ -99,25 +98,41 @@ class MainWindow(QMainWindow):
             if selected_module:
                 mod_model = load_module(selected_module)
                 parameters = {}
+                # Set all parameters from JSON defaults upfront
                 for card in mod_model.cards:
                     for param in card["parameters"]:
-                        parameters[param["name"]] = param.get("default", None)
+                        p_name = param["name"]
+                        p_default = param.get("default", None)
+                        parameters[p_name] = p_default
+
+                # Make sure you include the description from the mod_model
                 module_dict = {
                     "name": mod_model.module_name,
+                    "description": getattr(mod_model, "description", "No description available."),
                     "cards": mod_model.cards,
                     "parameters": parameters
                 }
+
                 self.added_modules.append(module_dict)
                 self.add_module_item(module_dict)
                 self.update_preview()
 
+
     def add_module_item(self, module_dict):
-        item_widget = ModuleItem(module_dict["name"], self)
+        # Extract module name and description from module_dict
+        module_name = module_dict.get("name", "Unnamed Module")
+        module_description = module_dict.get("description", "No description available.")
+        
+        # Create the ModuleItem with name and description
+        item_widget = ModuleItem(module_name, module_description, self)
+        
+        # Connect signals to appropriate slots
         item_widget.module_up.connect(lambda: self.move_module_up(item_widget))
         item_widget.module_down.connect(lambda: self.move_module_down(item_widget))
         item_widget.module_remove.connect(lambda: self.remove_module(item_widget))
         item_widget.module_edit.connect(lambda: self.edit_module_parameters(item_widget))
         
+        # Add the widget to the container and show it
         self.module_list_container.addWidget(item_widget)
         item_widget.show()
 
@@ -163,7 +178,16 @@ class MainWindow(QMainWindow):
         idx = self.index_of_module_item(item_widget)
         if idx >= 0:
             mod_dict = self.added_modules[idx]
-            dialog = ParameterDialog(mod_dict["name"], mod_dict["cards"], mod_dict["parameters"], self)
+            module_description = mod_dict.get("description", "No description available.")
+            
+            # Pass the module_description to ParameterDialog
+            dialog = ParameterDialog(
+                mod_dict["name"],
+                mod_dict["cards"],
+                mod_dict["parameters"],
+                self,
+                module_description  # New argument
+            )
             if dialog.exec_():
                 updated_params = dialog.get_parameters()
                 mod_dict["parameters"] = updated_params
@@ -174,42 +198,52 @@ class MainWindow(QMainWindow):
         for mod in self.added_modules:
             name = mod["name"]
             p = mod["parameters"]
+
             if name == "MODER":
-                nin = p.get("nin", 20)
-                nout = p.get("nout", -21)
+                nin = p.get("nin")  
+                nout = p.get("nout")
                 lines.append("moder")
                 lines.append(f"{nin} {nout} /")
 
             elif name == "RECONR":
-                nendf = p.get("nendf", 20)
-                npend = p.get("npend", 21)
-                isotope = p.get("material", "U235")
-                tolerance = p.get("tolerance", 0.001)
-                
-                mat = self.isotopes.get(isotope, 9999)
-                errmax = p.get("errmax", None)
-                errint = p.get("errint", None)
+                nendf = p.get("nendf")
+                npend = p.get("npend")
+                isotope = p.get("mat", "U235")  
+                mat = self.isotopes.get(isotope, 9228)
+                tolerance_str = p.get("err")
+                tolerance = float(tolerance_str) if tolerance_str is not None else 0.001
 
-                label = f"reconstructed data for {isotope}"
-                tempr = 0 if errmax is not None else 0
+                user_tempr = p.get("tempr", None)
+                user_errmax = p.get("errmax", None)
+                user_errint = p.get("errint", None)
 
+                # Dependency logic
+                if user_errint is not None and user_errmax is None:
+                    user_errmax = 10 * tolerance
+                if user_errmax is not None and user_tempr is None:
+                    user_tempr = 0.0
+
+                # Build the RECONR card
                 lines.append("reconr")
                 lines.append(f"{nendf} {npend} /")
-                lines.append(f"'{label}' /")
-                lines.append(f"{mat} 0 0 /")
+                label = f"reconstructed data for '{isotope}' @ {user_tempr if user_tempr is not None else '0'} K"
+                lines.append(f"{label} /")
+                lines.append(f"{mat} /")
 
-                # card 4
-                card4 = f"{tolerance}"
-                if tempr is not None:
-                    card4 += f" {tempr}"
-                if errmax is not None:
-                    card4 += f" {errmax}"
-                if errint is not None:
-                    card4 += f" {errint}"
-                card4 += " /"
-                lines.append(card4)
+                card4_parts = [str(tolerance)]
+                if user_tempr is not None:
+                    card4_parts.append(str(user_tempr))
+                if user_errmax is not None:
+                    card4_parts.append(str(user_errmax))
+                if user_errint is not None:
+                    card4_parts.append(str(user_errint))
+                card4_line = " ".join(card4_parts) + " /"
+                lines.append(card4_line)
 
                 lines.append("0 /")
+
+        if lines:
+            lines.append("stop")
 
         preview_text = "\n".join(lines)
         self.preview_text.setText(preview_text)

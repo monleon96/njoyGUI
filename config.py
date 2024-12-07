@@ -1,6 +1,6 @@
 # config.py
 
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
 
 # Base Font Configuration
 BASE_FONT_FAMILY = "Arial"
@@ -40,3 +40,32 @@ def get_dialog_font():
 
 def get_help_button_font():
     return QFont(HELP_BUTTON_FONT_FAMILY, HELP_BUTTON_FONT_SIZE)
+
+
+# Color Configurations
+BASE_COLOR = QColor("#f8f8f2")
+BUTTON_BACKGROUND_COLOR = QColor("#44475a")
+BUTTON_HOVER_COLOR = QColor("#6272a4")
+LABEL_COLOR = QColor("#f8f8f2")
+PREVIEW_BACKGROUND_COLOR = QColor("#282a36")
+PREVIEW_TEXT_COLOR = QColor("#f8f8f2")
+
+
+# Functions to get colors
+def get_base_color():
+    return BASE_COLOR
+
+def get_button_background_color():
+    return BUTTON_BACKGROUND_COLOR
+
+def get_button_hover_color():
+    return BUTTON_HOVER_COLOR
+
+def get_label_color():
+    return LABEL_COLOR
+
+def get_preview_background_color():
+    return PREVIEW_BACKGROUND_COLOR
+
+def get_preview_text_color():
+    return PREVIEW_TEXT_COLOR

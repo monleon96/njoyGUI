@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (
     QWidget, QGroupBox, QFrame, QSizePolicy
 )
 from PyQt5.QtCore import Qt
+import config 
 
 class ModuleSelectionDialog(QDialog):
     def __init__(self, modules_available, parent=None):
@@ -37,6 +38,38 @@ class ModuleSelectionDialog(QDialog):
             mod_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
             mod_button.clicked.connect(lambda checked, m=mod: self.select_module(m))
             scroll_layout.addWidget(mod_button)
+
+
+        # Style for the GroupBox using centralized color configurations
+        container.setStyleSheet(f"""
+            QGroupBox {{
+                border: 2px solid gray;
+                border-radius: 5px;
+                margin-top: 1ex;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 10px;  /* Add padding inside the group box */
+                color: {config.get_label_color().name()};
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 3px;
+            }}
+            
+            /* Add hover effect for buttons using centralized colors */
+            QPushButton {{
+                background-color: {config.get_button_background_color().name()};
+                color: {config.get_base_color().name()};
+                border: none;
+                border-radius: 3px;
+            }}
+            QPushButton:hover {{
+                background-color: {config.get_button_hover_color().name()};
+            }}
+        """)
+        
+
 
         # Add some space at the bottom
         scroll_layout.addStretch()

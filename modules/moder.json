@@ -1,22 +1,24 @@
 {
     "name": "MODER",
-    "description": "Copies or converts the entire contents of the data file on unit nin to unit nout.",
+    "description": "<b>MODER</b>: Copies or converts the entire contents of the data file on unit nin to unit nout.",
     "cards": [
       {
-        "name": "Card 1",
+        "name": "Mandatory",
         "description": "Unit numbers configuration for the moder module.",
         "parameters": [
           {
             "name": "nin",
             "description": "Input unit number. Positive for formatted, negative for binary. Range: 20-99.",
             "type": "int",
-            "default": 20
+            "default": 20,
+            "help": "Integer unit number for the ENDF input file. Typically 20 for input."
           },
           {
             "name": "nout",
             "description": "Output unit number. Positive for formatted, negative for binary. Range: 20-99.",
             "type": "int",
-            "default": -30
+            "default": -30,
+            "help": "Integer unit number for the ENDF input file. Typically 20 for input."
           }
         ]
       }

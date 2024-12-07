@@ -2,23 +2,26 @@
 
 from PyQt5.QtWidgets import (
     QDialog, QFormLayout, QDialogButtonBox, QVBoxLayout, QHBoxLayout, 
-    QPushButton, QLabel, QMessageBox, QLineEdit, QSpinBox, QDoubleSpinBox, 
-    QComboBox, QGroupBox, QWidget
+    QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox, 
+    QGroupBox, QWidget, QCompleter
 )
-from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtGui import QDesktopServices, QFont
+from PyQt5.QtCore import Qt, QUrl, QRegExp
+from PyQt5.QtGui import QDesktopServices, QRegExpValidator, QIntValidator, QFont
 
 from model import load_isotopes
-import config  # Import the configuration module
+import config
+from functools import partial
 
 class ParameterDialog(QDialog):
-    def __init__(self, module_name, cards, parameters, parent=None):
+    def __init__(self, module_name, cards, parameters, parent=None,  module_description=""):
         super().__init__(parent)
+        
         self.setWindowTitle(f"Edit Parameters: {module_name}")
         self.resize(600, 400)
         self.module_name = module_name
         self.cards = cards
         self.parameters = parameters.copy()
+        self.module_description = module_description  # Store the description
 
         self.param_widgets = {}
 
@@ -35,10 +38,11 @@ class ParameterDialog(QDialog):
             "mat": "Isotope",
             "err": "Tolerance",
             "errmax": "Errmax",
-            "errint": "Errint"
+            "errint": "Errint",
+            "tempr": "Temperature"
         }
 
-        # **Set Larger Font for the Entire Dialog**
+        # Set Larger Font for the Entire Dialog
         dialog_font = config.get_dialog_font()
         self.setFont(dialog_font)
 
@@ -49,16 +53,11 @@ class ParameterDialog(QDialog):
 
         top_layout = QHBoxLayout()
         pdf_btn = QPushButton("View Manual")
-        pdf_btn.setFont(config.get_button_font())  # Set font for 'View Manual' button
+        pdf_btn.setFont(config.get_button_font())
         pdf_btn.clicked.connect(self.open_pdf)
         top_layout.addStretch()
         top_layout.addWidget(pdf_btn)
         layout.addLayout(top_layout)
-
-        # Separate parameters by card name (Mandatory, Optional, etc.)
-        # We'll create QGroupBoxes for each "category" of parameters.
-        # In reconr.json, we have "Mandatory", "Optional", "Automatic".
-        # For moder, we only have one card (no optional section).
 
         # Create a dictionary of card_name -> list of parameters
         card_map = {}
@@ -66,44 +65,46 @@ class ParameterDialog(QDialog):
             card_name = card["name"]
             card_map.setdefault(card_name, []).extend(card["parameters"])
 
-        # We'll create a group box for each card_name except 'Automatic'
         for card_name, param_list in card_map.items():
             if card_name == "Automatic":
-                # Automatic parameters are not shown to user
                 continue
-
             group_box = QGroupBox(card_name)
-            group_box.setFont(config.get_label_font())  # Ensure group box title uses the dialog font
+            group_box.setFont(config.get_label_font())
             group_layout = QFormLayout()
 
             for param in param_list:
                 p_name = param["name"]
                 p_type = param["type"]
-                p_default = self.parameters.get(p_name, param.get("default", None))
+                p_default = param.get("default", None)
+                p_constraints = param.get("constraints", {})
                 p_help = param.get("help", "")
 
-                # Create widget
-                widget = self.create_widget_for_type(p_type, p_default, p_name)
+                # Determine the displayed value:
+                # If user previously set this param, use that.
+                # Else use JSON default if available.
+                # If none, leave blank for optional parameters.
+                if p_name in self.parameters:
+                    p_value = self.parameters[p_name]
+                else:
+                    p_value = p_default
 
-                # **Set Font for the Widget**
+                widget = self.create_widget_for_type(p_type, p_value, p_name, p_constraints, card_name)
                 widget.setFont(config.get_label_font())
 
-                # Add help button if help text available
                 h_layout = QHBoxLayout()
                 h_layout.addWidget(widget)
                 if p_help:
                     help_btn = QPushButton("?")
                     help_btn.setFixedWidth(25)
-                    help_btn.setFont(config.get_help_button_font())  # Set font for help button
+                    help_btn.setFont(config.get_help_button_font())
                     help_btn.clicked.connect(lambda checked, text=p_help: self.show_param_help(text))
                     h_layout.addWidget(help_btn)
-                # Create a container widget for the row
                 row_widget = QWidget()
                 row_widget.setLayout(h_layout)
 
                 display_label = self.display_names.get(p_name, p_name)
                 label = QLabel(display_label + ":")
-                label.setFont(config.get_label_font())  # Set font for label
+                label.setFont(config.get_label_font())
                 group_layout.addRow(label, row_widget)
 
                 if p_type != "auto":
@@ -112,64 +113,124 @@ class ParameterDialog(QDialog):
             group_box.setLayout(group_layout)
             layout.addWidget(group_box)
 
-        # Spacer for bottom
         layout.addStretch()
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.setFont(config.get_button_font())  # Ensure button box uses the dialog font
+        button_box.setFont(config.get_button_font())
         button_box.accepted.connect(self.accept_parameters)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
-    def create_widget_for_type(self, p_type, p_default, p_name):
+    def create_widget_for_type(self, p_type, p_value, p_name, p_constraints, card_name):
+        # All parameters now use QLineEdit.
+        line = QLineEdit()
+
         if p_type == "int":
-            spin = QSpinBox()
-            spin.setRange(-9999, 9999)
-            if p_default is not None:
-                spin.setValue(int(p_default))
-            spin.setFont(config.get_label_font())  # Set font for QSpinBox
-            return spin
+            # Integer validator
+            min_val = p_constraints.get("min", -99)
+            max_val = p_constraints.get("max", 99)
+            int_validator = QIntValidator(min_val, max_val, self)
+            line.setValidator(int_validator)
+
         elif p_type == "float":
-            dspin = QDoubleSpinBox()
-            dspin.setRange(0.0, 9999.0)
-            dspin.setDecimals(6)
-            if p_default is not None:
-                dspin.setValue(float(p_default))
-            dspin.setFont(config.get_label_font())  # Set font for QDoubleSpinBox
-            return dspin
+            # Float validator
+            float_regex = QRegExp(r'^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$')
+            val = QRegExpValidator(float_regex, self)
+            line.setValidator(val)
+
         elif p_type == "isotope":
+            # For isotopes, use QComboBox
             combo = QComboBox()
             isotope_list = sorted(self.isotopes.keys())
+            combo.setEditable(True)
+            combo.addItem("")  # empty option
             combo.addItems(isotope_list)
-            if p_default in isotope_list:
-                combo.setCurrentText(p_default)
-            combo.setFont(config.get_label_font())  # Set font for QComboBox
+
+            if p_value is not None:
+                combo.setCurrentText(str(p_value))
+            else:
+                combo.setCurrentText("")
+
+            completer = QCompleter(isotope_list, combo)
+            completer.setCaseSensitivity(Qt.CaseSensitive)
+            completer.setFilterMode(Qt.MatchContains)
+            combo.setCompleter(completer)
+
             return combo
+
         elif p_type == "auto":
-            # no widget
             label = QLabel("(Automatically set)")
-            label.setFont(config.get_label_font())  # Set font for QLabel
+            label.setFont(config.get_label_font())
             return label
+
+        # For mandatory parameters with defaults, set value.
+        # For optional without defaults, leave blank.
+        if p_value is not None:
+            line.setText(str(p_value))
         else:
-            line = QLineEdit()
-            if p_default is not None:
-                line.setText(str(p_default))
-            line.setFont(config.get_label_font())  # Set font for QLineEdit
-            return line
+            line.setText("")
+
+        return line
+
+    def validate_selection(self, combo, isotope_list, text):
+        if text in isotope_list or text == "":
+            combo._previous_valid_text = text
+        else:
+            combo.setCurrentText(combo._previous_valid_text)
 
     def show_param_help(self, text):
-        QMessageBox.information(self, "Parameter Help", text)
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Parameter Help")
+        msg_box.setTextFormat(Qt.RichText)
+        msg_box.setText(text)  # text can now contain HTML tags for formatting
+        msg_box.setIcon(QMessageBox.NoIcon)
+
+        # Use a similar font as module help
+        custom_font = QFont("Arial", 11)
+        msg_box.setFont(custom_font)
+
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec_()
+
+    def show_module_help(self):
+        """
+        Display the module's description in a QMessageBox with rich text formatting.
+        """
+        if not self.module_description:
+            help_text = "<b>No description available for this module.</b>"
+        else:
+            # Assuming module_description can contain HTML formatting
+            help_text = self.module_description
+
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(f"{self.module_name} - Description")
+        msg_box.setTextFormat(Qt.RichText)
+        msg_box.setText(help_text)
+        msg_box.setIcon(QMessageBox.NoIcon)
+
+        # Set a readable font
+        custom_font = QFont("Arial", 12)
+        msg_box.setFont(custom_font)
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec_()
 
     def accept_parameters(self):
+        # Collect all inputs
         for p_name, (widget, help_text) in self.param_widgets.items():
-            if isinstance(widget, QSpinBox):
-                self.parameters[p_name] = widget.value()
-            elif isinstance(widget, QDoubleSpinBox):
-                self.parameters[p_name] = widget.value()
+            if isinstance(widget, QLineEdit):
+                value = widget.text().strip()
+                if value == "":
+                    self.parameters.pop(p_name, None)
+                else:
+                    self.parameters[p_name] = value
+
             elif isinstance(widget, QComboBox):
-                self.parameters[p_name] = widget.currentText()
-            elif isinstance(widget, QLineEdit):
-                self.parameters[p_name] = widget.text()
+                value = widget.currentText().strip()
+                if value == "":
+                    self.parameters.pop(p_name, None)
+                else:
+                    self.parameters[p_name] = value
+
         self.accept()
 
     def get_parameters(self):
