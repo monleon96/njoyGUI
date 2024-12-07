@@ -1,5 +1,5 @@
 {
-    "name": "reconr",
+    "name": "RECONR",
     "description": "Reconstructs pointwise cross sections from resonance parameters and linearizes.",
     "cards": [
       {
@@ -21,14 +21,14 @@
             "help": "Integer unit number for the PEND output file. Typically 21 for output."
           },
           {
-            "name": "material",
+            "name": "mat",
             "description": "The material to be reconstructed (MAT number). Will be chosen by isotope name.",
             "type": "isotope",
             "default": "U235",
             "help": "Select the isotope. The corresponding MAT number will be written automatically."
           },
           {
-            "name": "tolerance",
+            "name": "err",
             "description": "Fractional reconstruction tolerance (err in manual).",
             "type": "float",
             "default": 0.001,

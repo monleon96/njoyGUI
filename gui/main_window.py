@@ -1,13 +1,18 @@
+# main_window.py
+
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-    QMessageBox, QSplitter, QScrollArea, QTextEdit, QFileDialog
+    QMessageBox, QSplitter, QScrollArea, QTextEdit, QFileDialog,
+    QSizePolicy
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 
 from model import load_module, load_isotopes
 from gui.module_item import ModuleItem
 from gui.module_selection_dialog import ModuleSelectionDialog
 from gui.parameter_dialog import ParameterDialog
+import config  # Import the configuration module
 
 class MainWindow(QMainWindow):
     def __init__(self, modules_available):
@@ -28,18 +33,27 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(10, 10, 10, 10)  # Overall margins
+        main_layout.setSpacing(10)  # Space between splitter and other elements
 
-        splitter = QSplitter()
+        splitter = QSplitter(Qt.Horizontal)
         main_layout.addWidget(splitter)
 
+        # Left panel
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(5, 5, 5, 5)  # Margins inside left panel
+        left_layout.setSpacing(5)  # Spacing inside left panel
+
         self.add_module_btn = QPushButton("Add Module")
+        self.add_module_btn.setMinimumSize(120, 35)
+        # **Set Font for 'Add Module' Button**
+        self.add_module_btn.setFont(config.get_button_font())
         self.add_module_btn.clicked.connect(self.add_module)
         left_layout.addWidget(self.add_module_btn)
 
         self.module_list_container = QVBoxLayout()
-        self.module_list_container.setSpacing(5)
+        self.module_list_container.setSpacing(2)  # Reduced spacing between module items
         self.module_list_container.setAlignment(Qt.AlignTop)
 
         scroll_frame = QWidget()
@@ -50,15 +64,31 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(scroll_area)
 
         self.generate_btn = QPushButton("Generate NJOY Input")
+        self.generate_btn.setMinimumSize(120, 30)
+        # **Set Font for 'Generate NJOY Input' Button**
+        self.generate_btn.setFont(config.get_button_font())
         self.generate_btn.clicked.connect(self.generate_njoy_input)
         left_layout.addWidget(self.generate_btn)
 
+        left_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+
         splitter.addWidget(left_widget)
 
+        # Right panel
         self.preview_text = QTextEdit()
         self.preview_text.setReadOnly(True)
+        self.preview_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        
+        # **Set Larger Font for Preview Text**
+        preview_font = config.get_preview_font()
+        self.preview_text.setFont(preview_font)
+        
         self.update_preview()
         splitter.addWidget(self.preview_text)
+
+        # Set stretch factors
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
 
         splitter.setSizes([300, 500])
 
@@ -144,13 +174,13 @@ class MainWindow(QMainWindow):
         for mod in self.added_modules:
             name = mod["name"]
             p = mod["parameters"]
-            if name == "moder":
+            if name == "MODER":
                 nin = p.get("nin", 20)
                 nout = p.get("nout", -21)
                 lines.append("moder")
                 lines.append(f"{nin} {nout} /")
 
-            elif name == "reconr":
+            elif name == "RECONR":
                 nendf = p.get("nendf", 20)
                 npend = p.get("npend", 21)
                 isotope = p.get("material", "U235")

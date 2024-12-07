@@ -19,7 +19,7 @@ class ModuleSelectionDialog(QDialog):
 
         title_label = QLabel("Choose a module to add:")
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title_label.setStyleSheet("font-size: 14px;")
         layout.addWidget(title_label)
 
         scroll_area = QScrollArea()
