@@ -21,6 +21,7 @@ class ParameterDialog(QDialog):
         self.module_description = module_description
         self.param_widgets = {}
         self.isotopes = load_isotopes()
+        self.resize(600, 400) 
 
         # Display name mapping
         self.display_names = {
