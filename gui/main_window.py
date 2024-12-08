@@ -12,6 +12,7 @@ from gui.module_item import ModuleItem
 from gui.module_selection_dialog import ModuleSelectionDialog
 from gui.parameter_dialog import ParameterDialog
 import config  # Import the configuration module
+from config import get_large_button_font 
 
 class MainWindow(QMainWindow):
     def __init__(self, modules_available):
@@ -48,6 +49,7 @@ class MainWindow(QMainWindow):
         self.add_module_btn.setMinimumSize(120, 35)
         # **Set Font for 'Add Module' Button**
         self.add_module_btn.setFont(config.get_button_font())
+        self.add_module_btn.setFont(get_large_button_font())
         self.add_module_btn.clicked.connect(self.add_module)
         left_layout.addWidget(self.add_module_btn)
 
@@ -66,6 +68,7 @@ class MainWindow(QMainWindow):
         self.generate_btn.setMinimumSize(120, 30)
         # **Set Font for 'Generate NJOY Input' Button**
         self.generate_btn.setFont(config.get_button_font())
+        self.generate_btn.setFont(get_large_button_font())
         self.generate_btn.clicked.connect(self.generate_njoy_input)
         left_layout.addWidget(self.generate_btn)
 
@@ -78,7 +81,7 @@ class MainWindow(QMainWindow):
         self.preview_text.setReadOnly(True)
         self.preview_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
-        # **Set Larger Font for Preview Text**
+        # Set larger font for preview text
         preview_font = config.get_preview_font()
         self.preview_text.setFont(preview_font)
         

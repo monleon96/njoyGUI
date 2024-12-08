@@ -10,6 +10,7 @@ from PyQt5.QtGui import QDesktopServices, QRegExpValidator, QIntValidator, QFont
 
 from model import load_isotopes
 import config
+from config import get_dialog_element_font  # Import the new font function
 
 class ParameterDialog(QDialog):
     def __init__(self, module_name, cards, parameters, parent=None,  module_description=""):
@@ -22,9 +23,8 @@ class ParameterDialog(QDialog):
         self.isotopes = load_isotopes()
         self.setFixedSize(600, 600)
 
-        # Set Larger Font for the Entire Dialog
-        dialog_font = config.get_dialog_font()
-        self.setFont(dialog_font)
+        # Set default font size 10 for the entire dialog
+        self.setFont(get_dialog_element_font())
 
         self.init_ui()
 
@@ -40,6 +40,7 @@ class ParameterDialog(QDialog):
         top_layout = QHBoxLayout()
         pdf_btn = QPushButton("View Manual")
         pdf_btn.setFont(config.get_button_font())
+        pdf_btn.setFixedWidth(120)  # Set a fixed width for the button
         pdf_btn.clicked.connect(self.open_pdf)
         top_layout.addStretch()
         top_layout.addWidget(pdf_btn)
@@ -76,7 +77,7 @@ class ParameterDialog(QDialog):
                     p_value = p_default
 
                 widget = self.create_widget_for_type(p_type, p_value, p_name, p_constraints, card_name)
-                widget.setFont(config.get_label_font())
+                widget.setFont(get_dialog_element_font())
 
                 h_layout = QHBoxLayout()
                 h_layout.addWidget(widget)
@@ -90,7 +91,7 @@ class ParameterDialog(QDialog):
                 row_widget.setLayout(h_layout)
 
                 label = QLabel(p_display_name + ":")
-                label.setFont(config.get_label_font())
+                label.setFont(get_dialog_element_font())
                 group_layout.addRow(label, row_widget)
 
                 if p_type != "auto":
@@ -111,6 +112,11 @@ class ParameterDialog(QDialog):
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.setFont(config.get_button_font())
+        # Set a larger font for OK and Cancel buttons
+        for button in button_box.buttons():
+            font = button.font()
+            font.setPointSize(font.pointSize() + 2)  # Increase font size by 2 points
+            button.setFont(font)
         button_box.accepted.connect(self.accept_parameters)
         button_box.rejected.connect(self.reject)
         main_layout.addWidget(button_box)
