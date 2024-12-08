@@ -312,6 +312,26 @@ class MainWindow(QMainWindow):
                     lines.append(" ".join(temps) + " /")
                 lines.append("0 /")
 
+            elif name == "HEATR":
+                # Card 1
+                nendf = p.get("nendf", "")
+                nin = p.get("nin", "")
+                nout = p.get("nout", "")
+
+                # Card 2
+                mat_str = p.get("matd", "U235")
+                mat_num = self.isotopes.get(mat_str, 9228)
+                mtk_str = p.get("mtk", "")
+                mtk_list = str(mtk_str).split()
+                npk = len(mtk_list)
+
+                # Build the HEATR module
+                lines.append("heatr")
+                lines.append(f"{nendf} {nin} {nout} /")
+                lines.append(f"{mat_num} {npk} /")
+                if npk > 0:
+                    lines.append(" ".join(mtk_list) + " /")
+
         if lines:
             lines.append("stop")
 
