@@ -211,65 +211,101 @@ class MainWindow(QMainWindow):
             p = mod["parameters"]
 
             if name == "MODER":
-                nin = p.get("nin")  
-                nout = p.get("nout")
+                # Card 1
+                nin = p.get("nin", "")
+                nout = p.get("nout", "")
+
+                # Build the MODER module
                 lines.append("moder")
                 lines.append(f"{nin} {nout} /")
 
             elif name == "RECONR":
-                nendf = p.get("nendf")
-                npend = p.get("npend")
-                isotope = p.get("mat", "U235")  
+                # Card 1
+                nendf = p.get("nendf", "")
+                npend = p.get("npend", "")
+
+                # Card 2 (label)
+                isotope = p.get("mat", "U235")
                 mat = self.isotopes.get(isotope, 9228)
-                tolerance_str = p.get("err")
-                tolerance = float(tolerance_str) if tolerance_str is not None else 0.001
+                label = f"reconstructed data for '{isotope}' @ {p.get('tempr', '0')} K"
 
-                user_tempr = p.get("tempr", None)
-                user_errmax = p.get("errmax", None)
-                user_errint = p.get("errint", None)
+                # Card 3
+                tolerance_str = p.get("err", "0.001")
+                tolerance = float(tolerance_str)
 
-                # Dependency logic
-                if user_errint is not None and user_errmax is None:
-                    user_errmax = 10 * tolerance
-                if user_errmax is not None and user_tempr is None:
-                    user_tempr = 0.0
+                # Get optional parameters
+                user_tempr = p.get("tempr")
+                user_errmax = p.get("errmax")
+                user_errint = p.get("errint")
 
-                # Build the RECONR card
+                # Build Card 4 with dependencies
+                card4_parts = [str(tolerance)]
+                if user_errint is not None:
+                    if user_errmax is None:
+                        user_errmax = 10 * tolerance
+                    if user_tempr is None:
+                        user_tempr = 0.0
+                    card4_parts.extend([str(user_tempr), str(user_errmax), str(user_errint)])
+                elif user_errmax is not None:
+                    if user_tempr is None:
+                        user_tempr = 0.0
+                    card4_parts.extend([str(user_tempr), str(user_errmax)])
+                elif user_tempr is not None:
+                    card4_parts.append(str(user_tempr))
+
+                card4_line = " ".join(card4_parts) + " /"
+
+                # Build the RECONR module
                 lines.append("reconr")
                 lines.append(f"{nendf} {npend} /")
-                label = f"reconstructed data for '{isotope}' @ {user_tempr if user_tempr is not None else '0'} K"
                 lines.append(f"{label} /")
                 lines.append(f"{mat} /")
-
-                card4_parts = [str(tolerance)]
-                if user_tempr is not None:
-                    card4_parts.append(str(user_tempr))
-                if user_errmax is not None:
-                    card4_parts.append(str(user_errmax))
-                if user_errint is not None:
-                    card4_parts.append(str(user_errint))
-                card4_line = " ".join(card4_parts) + " /"
                 lines.append(card4_line)
-
                 lines.append("0 /")
 
             elif name == "BROADR":
+                # Card 1
                 nendf = p.get("nendf", "")
                 nin = p.get("nin", "")
                 nout = p.get("nout", "")
+
+                # Card 2
                 mat_str = p.get("mat", "U235")
-                mat_num = self.isotopes.get(mat_str, 9228)  # fallback if not found
-                err = p.get("err", "0.001")
+                mat_num = self.isotopes.get(mat_str, 9228)
                 temp2_str = p.get("temp2", "")
                 temps = temp2_str.split()
                 ntemp2 = len(temps)
 
+                # Card 3 parameters
+                errthn_str = p.get("errthn", "0.001")
+                errthn = float(errthn_str)
+                user_thnmax = p.get("thnmax")
+                user_errmax = p.get("errmax")
+                user_errint = p.get("errint")
+
+                # Build Card 3 with dependencies
+                card3_parts = [str(errthn)]
+                if user_errint is not None:
+                    if user_errmax is None:
+                        user_errmax = 10 * errthn
+                    if user_thnmax is None:
+                        user_thnmax = 1
+                    card3_parts.extend([str(user_thnmax), str(user_errmax), str(user_errint)])
+                elif user_errmax is not None:
+                    if user_thnmax is None:
+                        user_thnmax = 1
+                    card3_parts.extend([str(user_thnmax), str(user_errmax)])
+                elif user_thnmax is not None:
+                    card3_parts.append(str(user_thnmax))
+
+                card3_line = " ".join(card3_parts) + " /"
+
+                # Build the BROADR module
                 lines.append("broadr")
                 lines.append(f"{nendf} {nin} {nout} /")
                 lines.append(f"{mat_num} {ntemp2} /")
-                lines.append(f"{err} /")
+                lines.append(card3_line)
                 if ntemp2 > 0:
-                    # temp2 line: space-separated temperatures
                     lines.append(" ".join(temps) + " /")
                 lines.append("0 /")
 

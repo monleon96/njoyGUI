@@ -52,7 +52,7 @@
             "constraints": {
             "min": 0.0
             },
-            "help": "<b>'errmax'</b><br><br>Fractional tolerance for thinning."
+            "help": "<b>'errthn'</b><br><br>Fractional tolerance for thinning."
           },
           {
             "name": "temp2",
@@ -70,8 +70,8 @@
         "name": "Advanced",
         "parameters": [
           {
-            "name": "thmax",
-            "display_name": "Thmax",
+            "name": "thnmax",
+            "display_name": "Thnmax",
             "type": "float",
             "default": null,
             "constraints": {
@@ -97,7 +97,7 @@
             "constraints": {
             "min": 0.0
             },
-            "help": "<b>'errint'</b><br><br>Maximum resonance-integral error (in barns) per grid point.<br><br>(default=err/20000)"
+            "help": "<b>'errint'</b><br><br>Maximum resonance-integral error (in barns) per grid point.<br><br>(default=errthn/20000)"
           }
         ]
       },
