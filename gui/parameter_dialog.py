@@ -11,7 +11,7 @@ from PyQt5.QtGui import QDesktopServices, QRegExpValidator, QIntValidator, QFont
 from model import load_isotopes
 import config
 from config import get_dialog_element_font  # Import the new font function
-from config import get_button_style
+from config import get_button_style, BUTTON_HOVER_COLOR
 
 class ParameterDialog(QDialog):
     def __init__(self, module_name, cards, parameters, parent=None,  module_description=""):
@@ -133,9 +133,9 @@ class ParameterDialog(QDialog):
         line = QLineEdit()
 
         if p_type == "int":
-            # Integer validator
-            min_val = p_constraints.get("min", -99)
-            max_val = p_constraints.get("max", 99)
+            # Integer validator that respects only defined constraints
+            min_val = p_constraints.get("min", -2147483647)  # Use Python's min int as default
+            max_val = p_constraints.get("max", 2147483647)   # Use Python's max int as default
             int_validator = QIntValidator(min_val, max_val, self)
             line.setValidator(int_validator)
 
@@ -145,9 +145,9 @@ class ParameterDialog(QDialog):
             val = QRegExpValidator(float_regex, self)
             line.setValidator(val)
 
-            # If there's a default value, set it
             if p_value is not None:
-                line.setText(str(p_value))
+                if isinstance(p_value, str):
+                    line.setText(p_value)
             else:
                 line.setText("")
 
@@ -166,7 +166,9 @@ class ParameterDialog(QDialog):
                 btn.setCheckable(True)
                 btn.setAutoExclusive(True)
                 btn.setFont(config.get_dialog_element_font())  # Set font
-                self.apply_button_style(btn)
+                # Modified style to keep hover color when checked
+                base_style = get_button_style()
+                btn.setStyleSheet(f"{base_style}\nQPushButton:checked {{background-color: {BUTTON_HOVER_COLOR.name()};}}")
                 if p_value == option:
                     btn.setChecked(True)
                 button_group.append(btn)
@@ -228,7 +230,7 @@ class ParameterDialog(QDialog):
             return combo
 
         elif p_type == "multi":
-            widget = self.create_multi_widget(p_value)
+            widget = self.create_multi_widget(p_value, p_name)
             return widget
 
         elif p_type == "auto":
@@ -406,7 +408,7 @@ class ParameterDialog(QDialog):
             QMessageBox.warning(self, "PDF not found", f"Could not open {pdf_path}. Ensure the file exists.")
 
 
-    def create_multi_widget(self, p_value):
+    def create_multi_widget(self, p_value, p_name):
         container = QWidget()
         v_layout = QVBoxLayout(container)
         v_layout.setContentsMargins(0, 0, 0, 0)
@@ -420,31 +422,35 @@ class ParameterDialog(QDialog):
         def validate_value(value):
             if not value:
                 return True
+            try:
+                val = float(value)
+                # Check constraints from parameter definition
+                p_def = self.find_parameter_definition(p_name)
+                constraints = p_def.get("constraints", {})
+                if "min" in constraints and val < constraints["min"]:
+                    QMessageBox.warning(container, "Invalid Value", 
+                                    f"Value must be >= {constraints['min']}")
+                    return False
+                if "max" in constraints and val > constraints["max"]:
+                    QMessageBox.warning(container, "Invalid Value", 
+                                    f"Value must be <= {constraints['max']}")
+                    return False
+            except ValueError:
+                QMessageBox.warning(container, "Invalid Value", 
+                                "Please enter a valid number")
+                return False
+                
             current_values = get_current_values()
             return value not in current_values
 
-        input_layout = QHBoxLayout()
-        input_line = QLineEdit()
-        input_line.setFont(config.get_label_font())
-        # Override key press event to fully capture Enter
-        def keyPressEvent(event):
-            if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
-                on_add()
-                event.accept()  # Prevent propagation
-            else:
-                QLineEdit.keyPressEvent(input_line, event)  # Handle other keys normally
-                
-        input_line.keyPressEvent = keyPressEvent
-        
-        add_btn = QPushButton("Add")
-        add_btn.setFixedWidth(50)
-        add_btn.setFont(config.get_label_font())
-        self.apply_button_style(add_btn)
-        
         def create_value_line(value):
             line_layout = QHBoxLayout()
             line_edit = QLineEdit()
-            line_edit.setText(value)
+            # Preserve scientific notation if present
+            if isinstance(value, str) and 'e' in value.lower():
+                line_edit.setText(value)  # Keep original format
+            else:
+                line_edit.setText(str(value))
             line_edit.setFont(config.get_label_font())
             
             remove_btn = QPushButton("x")
@@ -470,9 +476,27 @@ class ParameterDialog(QDialog):
             if text and validate_value(text):
                 create_value_line(text)
                 input_line.setText("")
-            elif text:
+            elif text and text in get_current_values():
                 QMessageBox.warning(container, "Duplicate Value", 
                                  "This value is already in the list!")
+        
+        input_layout = QHBoxLayout()
+        input_line = QLineEdit()
+        input_line.setFont(config.get_label_font())
+        # Override key press event to fully capture Enter
+        def keyPressEvent(event):
+            if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+                on_add()
+                event.accept()  # Prevent propagation
+            else:
+                QLineEdit.keyPressEvent(input_line, event)  # Handle other keys normally
+                
+        input_line.keyPressEvent = keyPressEvent
+        
+        add_btn = QPushButton("Add")
+        add_btn.setFixedWidth(50)
+        add_btn.setFont(config.get_label_font())
+        self.apply_button_style(add_btn)
         
         add_btn.clicked.connect(on_add)
         

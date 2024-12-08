@@ -11,6 +11,10 @@
           "display_name": "Input tape",
           "type": "int",
           "default": 20,
+          "constraints": {
+            "min": -99,
+            "max": 99
+          },
           "help": "<b>'nin'</b><br><br>Input unit number. Positive for formatted, negative for binary."
         },
         {
@@ -18,6 +22,10 @@
           "display_name": "Output tape",
           "type": "int",
           "default": -30,
+          "constraints": {
+            "min": -99,
+            "max": 99
+          },
           "help": "<b>nout</b><br><br>Output unit number. Positive for formatted, negative for binary."
         }
       ]

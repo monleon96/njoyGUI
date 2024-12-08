@@ -234,31 +234,38 @@ class MainWindow(QMainWindow):
                 # Card 2 (label)
                 isotope = p.get("mat", "U235")
                 mat = self.isotopes.get(isotope, 9228)
-                label = f"reconstructed data for '{isotope}' @ {p.get('tempr', '0')} K"
+                
+                # Get tempr value from parameters, use 0 as default for label
+                tempr = p.get("tempr")
+                try:
+                    if tempr is not None:
+                        tempr = float(tempr)
+                    else:
+                        tempr = 0.0
+                except (ValueError, TypeError):
+                    tempr = 0.0
+                
+                # Always show temperature in label
+                label = f"reconstructed data for '{isotope}' @ {tempr} K"
 
                 # Card 3
                 tolerance_str = p.get("err", "0.001")
                 tolerance = float(tolerance_str)
 
                 # Get optional parameters
-                user_tempr = p.get("tempr")
                 user_errmax = p.get("errmax")
                 user_errint = p.get("errint")
 
-                # Build Card 4 with dependencies
+                # Build Card 4 with dependencies (keep tempr optional in card 4)
                 card4_parts = [str(tolerance)]
                 if user_errint is not None:
                     if user_errmax is None:
                         user_errmax = 10 * tolerance
-                    if user_tempr is None:
-                        user_tempr = 0.0
-                    card4_parts.extend([str(user_tempr), str(user_errmax), str(user_errint)])
+                    card4_parts.extend([str(p.get("tempr", 0.0)), str(user_errmax), str(user_errint)])
                 elif user_errmax is not None:
-                    if user_tempr is None:
-                        user_tempr = 0.0
-                    card4_parts.extend([str(user_tempr), str(user_errmax)])
-                elif user_tempr is not None:
-                    card4_parts.append(str(user_tempr))
+                    card4_parts.extend([str(p.get("tempr", 0.0)), str(user_errmax)])
+                elif p.get("tempr") is not None:
+                    card4_parts.append(str(tempr))
 
                 card4_line = " ".join(card4_parts) + " /"
 
@@ -335,13 +342,11 @@ class MainWindow(QMainWindow):
                 user_iprint = p.get("iprint")
                 user_local = p.get("local")
                 
-                # Convert text options to numbers
+                # Convert text options to numbers - simplified iprint handling
                 if user_iprint == "min":
                     iprint = 0
                 elif user_iprint == "max":
                     iprint = 1
-                elif user_iprint == "check":
-                    iprint = 2
                 else:
                     iprint = None
 
@@ -396,16 +401,48 @@ class MainWindow(QMainWindow):
                 # Card 2
                 mat_str = p.get("matd", "U235")
                 mat_num = self.isotopes.get(mat_str, 9228)
-                temp_str = p.get("temp", "")
+                
+                # Process temperatures
+                temp_str = str(p.get("temp", ""))  # Ensure temp is a string
                 temps = temp_str.split()
                 ntemp = len(temps)
+                
+                # Process sigma zero values
+                sigz_str = str(p.get("sigz", ""))  # Ensure sigz is a string
+                sigz_values = sigz_str.split()
+                nsigz = len(sigz_values)
+                
+                # Get optional parameters
+                nbin = p.get("nbin", "20")
+                nladr = p.get("nladr", "64")
+                user_iprint = p.get("iprint")
+                nunx = p.get("nunx")
+                
+                # Convert text options to numbers - fixed iprint handling
+                if user_iprint == "min":
+                    iprint = 0
+                elif user_iprint == "max":
+                    iprint = 1
+                else:
+                    iprint = None
+                    
+                # Build card 2 parameters
+                card2_parts = [str(mat_num), str(ntemp), str(nsigz), str(nbin), str(nladr)]
+                
+                # Add iprint and nunx if either is specified
+                if nunx is not None or user_iprint is not None:
+                    card2_parts.append(str(iprint if iprint is not None else "1"))
+                    card2_parts.append(str(nunx if nunx is not None else ""))
 
                 # Build the PURR module
                 lines.append("purr")
                 lines.append(f"{nendf} {nin} {nout}")
-                lines.append(f"{mat_num} {ntemp} /")
+                lines.append(" ".join(card2_parts) + " /")
                 if ntemp > 0:
                     lines.append(" ".join(temps) + " /")
+                if nsigz > 0:
+                    lines.append(" ".join(sigz_values) + " /")
+                lines.append("0 /")
 
         if lines:
             lines.append("stop")
