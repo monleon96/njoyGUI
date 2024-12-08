@@ -318,17 +318,67 @@ class MainWindow(QMainWindow):
                 nin = p.get("nin", "")
                 nout = p.get("nout", "")
 
-                # Card 2
+                # Card 2 mandatory parameters
                 mat_str = p.get("matd", "U235")
                 mat_num = self.isotopes.get(mat_str, 9228)
                 mtk_str = p.get("mtk", "")
                 mtk_list = str(mtk_str).split()
                 npk = len(mtk_list)
 
+                # Handle optional Card 2 parameters
+                user_ed = p.get("ed")
+                user_iprint = p.get("iprint")
+                user_local = p.get("local")
+                
+                # Convert text options to numbers
+                if user_iprint == "min":
+                    iprint = 0
+                elif user_iprint == "max":
+                    iprint = 1
+                elif user_iprint == "check":
+                    iprint = 2
+                else:
+                    iprint = None
+
+                if user_local == "Transported":
+                    local = 0
+                elif user_local == "Deposited":
+                    local = 1
+                else:
+                    local = None
+
+                # Build Card 2 based on rightmost specified parameter
+                card2_parts = [str(mat_num), str(npk)]
+                
+                if user_ed is not None:
+                    # If ed is specified, include all parameters
+                    card2_parts.extend([
+                        "0",  # nqa
+                        "0",  # ntemp
+                        str(local if local is not None else 0),
+                        str(iprint if iprint is not None else 0),
+                        str(user_ed)
+                    ])
+                elif user_iprint is not None:
+                    # If iprint is specified (but not ed), include up to iprint
+                    card2_parts.extend([
+                        "0",  # nqa
+                        "0",  # ntemp
+                        str(local if local is not None else 0),
+                        str(iprint)
+                    ])
+                elif user_local is not None:
+                    # If only local is specified, include up to local
+                    card2_parts.extend([
+                        "0",  # nqa
+                        "0",  # ntemp
+                        str(local)
+                    ])
+
                 # Build the HEATR module
                 lines.append("heatr")
                 lines.append(f"{nendf} {nin} {nout} /")
-                lines.append(f"{mat_num} {npk} /")
+                lines.append(" ".join(card2_parts) + " /")
                 if npk > 0:
                     lines.append(" ".join(mtk_list) + " /")
 

@@ -59,6 +59,14 @@ def get_dialog_font():
 def get_help_button_font():
     return QFont(HELP_BUTTON_FONT_FAMILY, HELP_BUTTON_FONT_SIZE)
 
+def get_button_style():
+    """Return the style sheet for buttons with hover effect."""
+    hover_color = BUTTON_HOVER_COLOR.name()
+    return f"""
+        QPushButton:hover {{
+            background-color: {hover_color};
+        }}
+    """
 
 # Color Configurations
 BASE_COLOR = QColor("#f8f8f2")

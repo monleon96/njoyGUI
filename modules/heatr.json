@@ -50,19 +50,64 @@
             "name": "mtk",
             "display_name": "Kermas",
             "type": "multi",
-            "default": 293.6,
+            "default": 302,
             "constraints": {
             "min": 0.0
             },
-            "help": "<b>'mtk'</b><br><br>MT numbers for partial kermas desired. MT=301 will be provided automatically. Partial kerma for reaction MT is MT+300 and may not be properly defined unless a gamma file for MT is on the endf tape (for more info see manual)."
+            "help": "<b>'mtk'</b><br><br>MT numbers for partial kermas desired. MT=301 will be provided automatically. Partial kerma for reaction MT is MT+300 and may not be properly defined unless a gamma file for MT is on the endf tape.<br><br>(for more info see manual)."
           }
         ]
       },
+      {
+        "name": "Advanced",
+        "parameters": [
+            {
+            "name": "iprint",
+            "display_name": "Print",
+            "type": "option",
+            "default": null,
+            "constraints": {
+            "options": ["min", "max", "check"]
+            },
+            "help": "<b>'iprint'</b><br><br>Print flag<br><br>(default=min)"
+            },
+            {
+                "name": "local",
+                "display_name": "Gamma Ray Behavior",
+                "type": "option",
+                "default": null,
+                "constraints": {
+                "options": ["Transported", "Deposited"]
+                },
+                "help": "<b>'local'</b><br><br>Gamma rays transported or deposited locally<br><br>(default=transported)"
+            },
+            {
+                "name": "ed",
+                "display_name": "Displacement energy",
+                "type": "float",
+                "default": null,
+                "constraints": {
+                "min": 0.0
+                },
+                "help": "<b>'ed'</b><br><br>Displacement energy for damage.<br><br>(default from built-in table)"
+            }
+          ]
+        },
       {
         "name": "Automatic",
         "parameters": [
           {
             "name": "npk",
+            "default": 0,
+            "type": "auto"
+          },
+          {
+            "name": "nqa",
+            "default": 0,
+            "type": "auto"
+          },
+          {
+            "name": "ntemp",
             "default": 0,
             "type": "auto"
           }

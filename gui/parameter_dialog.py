@@ -11,6 +11,7 @@ from PyQt5.QtGui import QDesktopServices, QRegExpValidator, QIntValidator, QFont
 from model import load_isotopes
 import config
 from config import get_dialog_element_font  # Import the new font function
+from config import get_button_style
 
 class ParameterDialog(QDialog):
     def __init__(self, module_name, cards, parameters, parent=None,  module_description=""):
@@ -28,6 +29,10 @@ class ParameterDialog(QDialog):
 
         self.init_ui()
 
+    def apply_button_style(self, button):
+        """Helper method to apply consistent button styling"""
+        button.setStyleSheet(get_button_style())
+
     def init_ui(self):
         # Create main layout
         main_layout = QVBoxLayout(self)
@@ -41,6 +46,7 @@ class ParameterDialog(QDialog):
         pdf_btn = QPushButton("View Manual")
         pdf_btn.setFont(config.get_button_font())
         pdf_btn.setFixedWidth(120)  # Set a fixed width for the button
+        self.apply_button_style(pdf_btn)
         pdf_btn.clicked.connect(self.open_pdf)
         top_layout.addStretch()
         top_layout.addWidget(pdf_btn)
@@ -117,6 +123,7 @@ class ParameterDialog(QDialog):
             font = button.font()
             font.setPointSize(font.pointSize() + 2)  # Increase font size by 2 points
             button.setFont(font)
+            self.apply_button_style(button)
         button_box.accepted.connect(self.accept_parameters)
         button_box.rejected.connect(self.reject)
         main_layout.addWidget(button_box)
@@ -143,6 +150,47 @@ class ParameterDialog(QDialog):
                 line.setText(str(p_value))
             else:
                 line.setText("")
+
+        elif p_type == "option":
+            container = QWidget()
+            layout = QHBoxLayout(container)
+            layout.setContentsMargins(0, 0, 0, 0)
+            
+            # Create a button group to manage exclusive selection
+            button_group = []
+            
+            # Create toggle buttons for each option
+            options = p_constraints.get("options", ["Option1", "Option2", "Option3"])
+            for option in options:
+                btn = QPushButton(option)
+                btn.setCheckable(True)
+                btn.setAutoExclusive(True)
+                btn.setFont(config.get_dialog_element_font())  # Set font
+                self.apply_button_style(btn)
+                if p_value == option:
+                    btn.setChecked(True)
+                button_group.append(btn)
+                layout.addWidget(btn)
+                
+            # Add clear button
+            clear_btn = QPushButton("x")
+            clear_btn.setFixedWidth(25)
+            clear_btn.setFont(config.get_dialog_element_font())  # Set font
+            self.apply_button_style(clear_btn)
+            
+            def clear_selection():
+                # Temporarily disable auto-exclusive behavior
+                for btn in button_group:
+                    btn.setAutoExclusive(False)
+                    btn.setChecked(False)
+                    btn.setAutoExclusive(True)
+                    
+            clear_btn.clicked.connect(clear_selection)
+            layout.addWidget(clear_btn)
+            
+            # Store buttons in the container for later access
+            container.buttons = button_group
+            return container
 
         elif p_type == "isotope":
             combo = QComboBox()
@@ -316,6 +364,18 @@ class ParameterDialog(QDialog):
                         return
                     self.parameters[p_name] = value
 
+            elif p_type == "option":
+                # Handle the option-type widget with toggle buttons
+                selected_value = None
+                for btn in widget.buttons:
+                    if btn.isChecked():
+                        selected_value = btn.text()
+                        break
+                if selected_value:
+                    self.parameters[p_name] = selected_value
+                else:
+                    self.parameters.pop(p_name, None)
+
         if self.module_name.lower() == "broadr":
             temp2_str = self.parameters.get("temp2", "")
             if temp2_str == "":
@@ -354,43 +414,76 @@ class ParameterDialog(QDialog):
 
         container.line_edits = []
 
-        def add_line(value=""):
+        def get_current_values():
+            return [edit.text().strip() for edit in container.line_edits if edit.text().strip()]
+
+        def validate_value(value):
+            if not value:
+                return True
+            current_values = get_current_values()
+            return value not in current_values
+
+        input_layout = QHBoxLayout()
+        input_line = QLineEdit()
+        input_line.setFont(config.get_label_font())
+        # Override key press event to fully capture Enter
+        def keyPressEvent(event):
+            if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+                on_add()
+                event.accept()  # Prevent propagation
+            else:
+                QLineEdit.keyPressEvent(input_line, event)  # Handle other keys normally
+                
+        input_line.keyPressEvent = keyPressEvent
+        
+        add_btn = QPushButton("Add")
+        add_btn.setFixedWidth(50)
+        add_btn.setFont(config.get_label_font())
+        self.apply_button_style(add_btn)
+        
+        def create_value_line(value):
             line_layout = QHBoxLayout()
             line_edit = QLineEdit()
             line_edit.setText(value)
             line_edit.setFont(config.get_label_font())
+            
             remove_btn = QPushButton("x")
             remove_btn.setFixedWidth(25)
-            remove_btn.setFont(config.get_label_font()) 
-
+            remove_btn.setFont(config.get_label_font())
+            self.apply_button_style(remove_btn)
+            
             def remove_line():
                 v_layout.removeItem(line_layout)
-                line_layout.removeWidget(line_edit)
-                line_layout.removeWidget(remove_btn)
                 line_edit.deleteLater()
                 remove_btn.deleteLater()
                 container.line_edits.remove(line_edit)
-
+            
             remove_btn.clicked.connect(remove_line)
-
+            
             line_layout.addWidget(line_edit)
             line_layout.addWidget(remove_btn)
             v_layout.addLayout(line_layout)
             container.line_edits.append(line_edit)
-
-        # Initialize the lines from p_value
+            
+        def on_add():
+            text = input_line.text().strip()
+            if text and validate_value(text):
+                create_value_line(text)
+                input_line.setText("")
+            elif text:
+                QMessageBox.warning(container, "Duplicate Value", 
+                                 "This value is already in the list!")
+        
+        add_btn.clicked.connect(on_add)
+        
+        # Add the input line with Add button at the top
+        input_layout.addWidget(input_line)
+        input_layout.addWidget(add_btn)
+        v_layout.addLayout(input_layout)
+        
+        # Initialize existing values below the input line
         values = str(p_value).split() if p_value else []
         for val in values:
-            add_line(val)
-
-        # If no default given, start with one empty line or just skip:
-        if not values:
-            add_line("")
-
-        add_btn = QPushButton("+")
-        add_btn.setFixedWidth(25)
-        add_btn.setFont(config.get_label_font())  # Opcional: también aplicar la fuente al botón de añadir
-        add_btn.clicked.connect(lambda: add_line(""))
-        v_layout.addWidget(add_btn, 0, Qt.AlignLeft)
+            create_value_line(val)
 
         return container
