@@ -21,7 +21,7 @@ def load_module(module_name):
     return model
 
 def load_isotopes():
-    filepath = "isotopes.json"
+    filepath = "resources/isotopes.json"
     if os.path.exists(filepath):
         with open(filepath, 'r') as f:
             data = json.load(f)
