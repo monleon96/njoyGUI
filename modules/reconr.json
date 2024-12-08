@@ -27,10 +27,9 @@
           },
           {
             "name": "mat",
-            "description": "The material to be reconstructed (MAT number). Will be chosen by isotope name.",
             "type": "isotope",
             "default": "U235",
-            "help": "<b>'mat'</b><br><br>Material to be reconstructed (MAT number). Select the isotope and the MAT number will be chosen automatically."
+            "help": "<b>'mat'</b><br><br>Material to be reconstructed. Select the isotope and the MAT number will be chosen automatically."
           },
           {
             "name": "err",
@@ -45,7 +44,6 @@
       },
       {
         "name": "Optional",
-        "description": "Optional parameters for advanced users",
         "parameters": [
           {
             "name": "errmax",
@@ -69,7 +67,6 @@
       },
       {
         "name": "Advanced",
-        "description": "Parameters that are automatically generated and not shown to user.",
         "parameters": [
           {
             "name": "tempr",
@@ -84,7 +81,6 @@
       },
       {
         "name": "Automatic",
-        "description": "Parameters that are automatically generated and not shown to user.",
         "parameters": [
           {
             "name": "tlabel",

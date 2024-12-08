@@ -15,16 +15,11 @@ from functools import partial
 class ParameterDialog(QDialog):
     def __init__(self, module_name, cards, parameters, parent=None,  module_description=""):
         super().__init__(parent)
-        
-        self.setWindowTitle(f"Edit Parameters: {module_name}")
-        self.resize(600, 400)
         self.module_name = module_name
         self.cards = cards
         self.parameters = parameters.copy()
-        self.module_description = module_description  # Store the description
-
+        self.module_description = module_description
         self.param_widgets = {}
-
         self.isotopes = load_isotopes()
 
         # Display name mapping
@@ -39,7 +34,9 @@ class ParameterDialog(QDialog):
             "err": "Tolerance",
             "errmax": "Errmax",
             "errint": "Errint",
-            "tempr": "Temperature"
+            "tempr": "Temperature",
+            # broadr
+            'temp2': "Temperature"
         }
 
         # Set Larger Font for the Entire Dialog
@@ -164,6 +161,10 @@ class ParameterDialog(QDialog):
 
             return combo
 
+        elif p_type == "multi":
+            widget = self.create_multi_widget(p_value)
+            return widget
+
         elif p_type == "auto":
             label = QLabel("(Automatically set)")
             label.setFont(config.get_label_font())
@@ -222,18 +223,44 @@ class ParameterDialog(QDialog):
 
     def accept_parameters(self):
         for p_name, (widget, help_text) in self.param_widgets.items():
+            p_def = self.find_parameter_definition(p_name)
+            p_type = p_def["type"]
+            constraints = p_def.get("constraints", {})
+
+            if p_type == "multi":
+                # Handle the multi-type widget
+                lines = []
+                for edit in widget.line_edits:
+                    val_str = edit.text().strip()
+                    if val_str:
+                        try:
+                            val = float(val_str)
+                        except ValueError:
+                            self.show_error(f"{p_name} values must be numeric.")
+                            return
+                        # Check min/max constraints for each entry
+                        if "min" in constraints and val < constraints["min"]:
+                            self.show_error(f"{p_name} must be >= {constraints['min']}")
+                            return
+                        if "max" in constraints and val > constraints["max"]:
+                            self.show_error(f"{p_name} must be <= {constraints['max']}")
+                            return
+                        lines.append(val_str)
+                        
+                if len(lines) == 0:
+                    self.parameters.pop(p_name, None)
+                else:
+                    self.parameters[p_name] = " ".join(lines)
+
             if isinstance(widget, QLineEdit):
                 value_str = widget.text().strip()
                 if value_str == "":
                     self.parameters.pop(p_name, None)
                 else:
-                    p_def = self.find_parameter_definition(p_name)
-                    p_type = p_def["type"]
-                    constraints = p_def.get("constraints", {})
-
                     if p_type == "int":
                         # value_str should pass the validator, so it's an integer
                         value = int(value_str)
+
                         # Check min/max constraints
                         if "min" in constraints and value < constraints["min"]:
                             self.show_error(f"{p_name} must be >= {constraints['min']}")
@@ -258,10 +285,6 @@ class ParameterDialog(QDialog):
                             return
                         self.parameters[p_name] = value
 
-                    else:
-                        # For isotope or other types, just store the value as is
-                        self.parameters[p_name] = value_str
-
             elif isinstance(widget, QComboBox):
                 value = widget.currentText().strip()
                 if value == "":
@@ -269,7 +292,16 @@ class ParameterDialog(QDialog):
                 else:
                     self.parameters[p_name] = value
 
+        if self.module_name.lower() == "broadr":
+            temp2_str = self.parameters.get("temp2", "")
+            if temp2_str == "":
+                self.parameters.pop("ntemp2", None)
+            else:
+                temps = temp2_str.split()
+                self.parameters["ntemp2"] = len(temps)
+
         self.accept()
+
 
     def get_parameters(self):
         return self.parameters
@@ -288,3 +320,50 @@ class ParameterDialog(QDialog):
         pdf_path = f"resources/{self.module_name}.pdf"
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(pdf_path)):
             QMessageBox.warning(self, "PDF not found", f"Could not open {pdf_path}. Ensure the file exists.")
+
+
+    def create_multi_widget(self, p_value):
+        container = QWidget()
+        v_layout = QVBoxLayout(container)
+        v_layout.setContentsMargins(0, 0, 0, 0)
+        v_layout.setSpacing(5)
+
+        container.line_edits = []
+
+        def add_line(value=""):
+            line_layout = QHBoxLayout()
+            line_edit = QLineEdit()
+            line_edit.setText(value)
+            remove_btn = QPushButton("x")
+            remove_btn.setFixedWidth(25)
+
+            def remove_line():
+                v_layout.removeItem(line_layout)
+                line_layout.removeWidget(line_edit)
+                line_layout.removeWidget(remove_btn)
+                line_edit.deleteLater()
+                remove_btn.deleteLater()
+                container.line_edits.remove(line_edit)
+
+            remove_btn.clicked.connect(remove_line)
+
+            line_layout.addWidget(line_edit)
+            line_layout.addWidget(remove_btn)
+            v_layout.addLayout(line_layout)
+            container.line_edits.append(line_edit)
+
+        # Initialize the lines from p_value
+        values = str(p_value).split() if p_value else []
+        for val in values:
+            add_line(val)
+
+        # If no default given, start with one empty line or just skip:
+        if not values:
+            add_line("")
+
+        add_btn = QPushButton("+")
+        add_btn.setFixedWidth(25)
+        add_btn.clicked.connect(lambda: add_line(""))
+        v_layout.addWidget(add_btn, 0, Qt.AlignLeft)
+
+        return container

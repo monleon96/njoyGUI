@@ -105,6 +105,17 @@ class MainWindow(QMainWindow):
                         p_default = param.get("default", None)
                         parameters[p_name] = p_default
 
+                if mod_model.module_name.lower() == "broadr":
+                    # Ensure temp2 is set correctly from the default
+                    # If p_default for temp2 was a number, convert it to a string
+                    if isinstance(parameters.get('temp2'), (int, float)):
+                        parameters['temp2'] = str(parameters['temp2'])  # "293.6"
+                    if not parameters.get('temp2', '').strip():
+                        parameters['temp2'] = "293.6"
+                    # Set ntemp2 based on temp2 count
+                    temps = parameters['temp2'].split()
+                    parameters['ntemp2'] = len(temps) if temps else 1
+
                 # Make sure you include the description from the mod_model
                 module_dict = {
                     "name": mod_model.module_name,
@@ -186,7 +197,7 @@ class MainWindow(QMainWindow):
                 mod_dict["cards"],
                 mod_dict["parameters"],
                 self,
-                module_description  # New argument
+                module_description 
             )
             if dialog.exec_():
                 updated_params = dialog.get_parameters()
@@ -240,6 +251,26 @@ class MainWindow(QMainWindow):
                 card4_line = " ".join(card4_parts) + " /"
                 lines.append(card4_line)
 
+                lines.append("0 /")
+
+            elif name == "BROADR":
+                nendf = p.get("nendf", "")
+                nin = p.get("nin", "")
+                nout = p.get("nout", "")
+                mat_str = p.get("mat", "U235")
+                mat_num = self.isotopes.get(mat_str, 9228)  # fallback if not found
+                err = p.get("err", "0.001")
+                temp2_str = p.get("temp2", "")
+                temps = temp2_str.split()
+                ntemp2 = len(temps)
+
+                lines.append("broadr")
+                lines.append(f"{nendf} {nin} {nout} /")
+                lines.append(f"{mat_num} {ntemp2} /")
+                lines.append(f"{err} /")
+                if ntemp2 > 0:
+                    # temp2 line: space-separated temperatures
+                    lines.append(" ".join(temps) + " /")
                 lines.append("0 /")
 
         if lines:

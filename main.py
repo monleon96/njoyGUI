@@ -18,7 +18,7 @@ if __name__ == "__main__":
     app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
 
     # Now we have both MODER and RECONR modules
-    modules_available = ["MODER", "RECONR"]
+    modules_available = ["MODER", "RECONR", "BROADR"]
 
     window = MainWindow(modules_available)
     window.show()

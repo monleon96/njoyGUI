@@ -1,0 +1,75 @@
+{
+    "name": "BROADR",
+    "description": "<b>BROADR</b><br><br>BROADR module generates Doppler-broadened cross sections in PENDF format starting from piecewise linear cross sections in PENDF format. The input cross sections can be from RECONR or from a previous BROADR run. The code is based on SIGMA1 by D. E. Cullen. The method is often called 'kernel broadening' because it uses a detailed integration of the integral equation defining the effective cross section. It is a fully accurate method, treating all resonance and non-resonance cross sections including multilevel effects. BROADR has the following features:<br><ul><li>An alternate calculation is used for low energies and high temperatures that corrects a numerical problem of the original SIGMA1. (This problem has been corrected in another way in later versions of SIGMA1.)</li><li>Dynamic storage allocation is used, which allows the code to be run on large or small machines with full use of whatever storage is made available.</li><li>Reactions are broadened in parallel on a union grid, with the top of the resolved resonance range being the typical upper limit for Doppler broadening.</li><li>The union grid is constructed adaptively to give a linearized representation of the broadened cross section with tolerances consistent with those used in RECONR. Energy points may be added to or removed from the input grid as required for the best possible representation. Precision up to 9 significant figures is allowed for energies.</li><li>The summation cross sections such as total, nonelastic, and sometimes fission or (n,2n) are reconstructed to equal the sum of their parts.</li><li>Standard thermal cross sections, integrals, and ratios are computed when the temperature is 293.6K (0.0253 eV).</li><li>The file directory (actually an index to the reactions present) is updated.</li></ul>",    "cards": [
+      {
+        "name": "Mandatory",
+        "parameters": [
+          {
+            "name": "nendf",
+            "type": "int",
+            "default": -30,
+            "constraints": {
+              "min": -99,
+              "max": 99
+            },
+            "help": "<b>'nendf'</b><br><br>Unit for endf tape. (Needed only for thermal nubar)"
+          },
+          {
+            "name": "nin",
+            "type": "int",
+            "default": -21,
+            "constraints": {
+              "min": -99,
+              "max": 99
+            },
+            "help": "<b>'nin'</b><br><br>Unit for input pendf tape."
+          },
+          {
+            "name": "nout",
+            "type": "int",
+            "default": -22,
+            "constraints": {
+              "min": -99,
+              "max": 99
+            },
+            "help": "<b>'nout'</b><br><br>Unit for output pendf tape."
+          },
+          {
+            "name": "mat",
+            "type": "isotope",
+            "default": "U235",
+            "help": "<b>'mat'</b><br><br>Material to be broadened and thinned. Select the isotope and the MAT number will be chosen automatically."
+          },
+          {
+            "name": "err",
+            "type": "float",
+            "default": 0.001,
+            "constraints": {
+            "min": 0.0
+            },
+            "help": "<b>'errmax'</b><br><br>Fractional tolerance for thinning."
+          },
+          {
+            "name": "temp2",
+            "type": "multi",
+            "default": 293.6,
+            "constraints": {
+            "min": 0.0
+            },
+            "help": "<b>'temp2'</b><br><br>Final temperatures (K)."
+          }
+        ]
+      },
+      {
+        "name": "Automatic",
+        "parameters": [
+          {
+            "name": "ntemp2",
+            "default": 1,
+            "type": "auto"
+          }
+        ]
+      }
+    ]
+  }
+  
