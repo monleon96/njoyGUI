@@ -43,7 +43,7 @@
         ]
       },
       {
-        "name": "Optional",
+        "name": "Advanced",
         "parameters": [
           {
             "name": "errmax",

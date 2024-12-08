@@ -3,7 +3,7 @@
 from PyQt5.QtWidgets import (
     QDialog, QFormLayout, QDialogButtonBox, QVBoxLayout, QHBoxLayout, 
     QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox, 
-    QGroupBox, QWidget, QCompleter
+    QGroupBox, QWidget, QCompleter, QListView
 )
 from PyQt5.QtCore import Qt, QUrl, QRegExp
 from PyQt5.QtGui import QDesktopServices, QRegExpValidator, QIntValidator, QFont
@@ -143,18 +143,30 @@ class ParameterDialog(QDialog):
                 line.setText("")
 
         elif p_type == "isotope":
-            # For isotopes, use QComboBox
+            # Create your QComboBox
             combo = QComboBox()
             isotope_list = sorted(self.isotopes.keys())
+
             combo.setEditable(True)
-            combo.addItem("")  # empty option
+            combo.addItem("")
             combo.addItems(isotope_list)
+
+            # Set the font for the combo box and the line edit as before
+            font = config.get_label_font()
+            combo.setFont(font)
+            combo.lineEdit().setFont(font)
 
             if p_value is not None:
                 combo.setCurrentText(str(p_value))
             else:
                 combo.setCurrentText("")
 
+            # Assign a custom QListView to the combo
+            view = QListView()
+            view.setFont(font)
+            combo.setView(view)
+
+            # Set up the completer as needed
             completer = QCompleter(isotope_list, combo)
             completer.setCaseSensitivity(Qt.CaseSensitive)
             completer.setFilterMode(Qt.MatchContains)
@@ -171,6 +183,9 @@ class ParameterDialog(QDialog):
             label.setFont(config.get_label_font())
             return label
 
+        # For all QLineEdit widgets (including float/temperature inputs)
+        line.setFont(config.get_label_font())
+        
         # For mandatory parameters with defaults, set value.
         # For optional without defaults, leave blank.
         if p_value is not None:
@@ -335,8 +350,10 @@ class ParameterDialog(QDialog):
             line_layout = QHBoxLayout()
             line_edit = QLineEdit()
             line_edit.setText(value)
+            line_edit.setFont(config.get_label_font())
             remove_btn = QPushButton("x")
             remove_btn.setFixedWidth(25)
+            remove_btn.setFont(config.get_label_font()) 
 
             def remove_line():
                 v_layout.removeItem(line_layout)
@@ -364,6 +381,7 @@ class ParameterDialog(QDialog):
 
         add_btn = QPushButton("+")
         add_btn.setFixedWidth(25)
+        add_btn.setFont(config.get_label_font())  # Opcional: también aplicar la fuente al botón de añadir
         add_btn.clicked.connect(lambda: add_line(""))
         v_layout.addWidget(add_btn, 0, Qt.AlignLeft)
 
