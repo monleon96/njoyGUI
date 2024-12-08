@@ -7,6 +7,7 @@
         "parameters": [
           {
             "name": "nendf",
+            "display_name": "endf input tape",
             "type": "int",
             "default": -30,
             "constraints": {
@@ -17,6 +18,7 @@
           },
           {
             "name": "npend",
+            "display_name": "pendf output tape",
             "type": "int",
             "default": -21,
             "constraints": {
@@ -27,12 +29,14 @@
           },
           {
             "name": "mat",
+            "display_name": "Isotope",
             "type": "isotope",
             "default": "U235",
             "help": "<b>'mat'</b><br><br>Material to be reconstructed. Select the isotope and the MAT number will be chosen automatically."
           },
           {
             "name": "err",
+            "display_name": "Tolerance",
             "type": "float",
             "default": 0.001,
             "constraints": {
@@ -47,6 +51,7 @@
         "parameters": [
           {
             "name": "errmax",
+            "display_name": "Errmax",
             "type": "float",
             "default": null,
             "constraints": {
@@ -56,6 +61,7 @@
           },
           {
             "name": "errint",
+            "display_name": "Errint",
             "type": "float",
             "default": null,
             "constraints": {
@@ -90,4 +96,3 @@
       }
     ]
   }
-  

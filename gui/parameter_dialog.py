@@ -3,14 +3,13 @@
 from PyQt5.QtWidgets import (
     QDialog, QFormLayout, QDialogButtonBox, QVBoxLayout, QHBoxLayout, 
     QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox, 
-    QGroupBox, QWidget, QCompleter, QListView
+    QGroupBox, QWidget, QCompleter, QListView, QScrollArea
 )
 from PyQt5.QtCore import Qt, QUrl, QRegExp
 from PyQt5.QtGui import QDesktopServices, QRegExpValidator, QIntValidator, QFont
 
 from model import load_isotopes
 import config
-from functools import partial
 
 class ParameterDialog(QDialog):
     def __init__(self, module_name, cards, parameters, parent=None,  module_description=""):
@@ -21,24 +20,7 @@ class ParameterDialog(QDialog):
         self.module_description = module_description
         self.param_widgets = {}
         self.isotopes = load_isotopes()
-        self.resize(600, 400) 
-
-        # Display name mapping
-        self.display_names = {
-            # moder
-            "nin": "Input tape",
-            "nout": "Output tape",
-            # reconr
-            "nendf": "Input tape",
-            "npend": "Output tape",
-            "mat": "Isotope",
-            "err": "Tolerance",
-            "errmax": "Errmax",
-            "errint": "Errint",
-            "tempr": "Temperature",
-            # broadr
-            'temp2': "Temperature"
-        }
+        self.setFixedSize(600, 600)
 
         # Set Larger Font for the Entire Dialog
         dialog_font = config.get_dialog_font()
@@ -47,15 +29,21 @@ class ParameterDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout(self)
+        # Create main layout
+        main_layout = QVBoxLayout(self)
 
+        # Create a container widget to hold all the widgets
+        container_widget = QWidget()
+        container_layout = QVBoxLayout(container_widget)
+
+        # Add a button to view the manual
         top_layout = QHBoxLayout()
         pdf_btn = QPushButton("View Manual")
         pdf_btn.setFont(config.get_button_font())
         pdf_btn.clicked.connect(self.open_pdf)
         top_layout.addStretch()
         top_layout.addWidget(pdf_btn)
-        layout.addLayout(top_layout)
+        container_layout.addLayout(top_layout)
 
         # Create a dictionary of card_name -> list of parameters
         card_map = {}
@@ -64,7 +52,7 @@ class ParameterDialog(QDialog):
             card_map.setdefault(card_name, []).extend(card["parameters"])
 
         for card_name, param_list in card_map.items():
-            if card_name == "Automatic":
+            if (card_name == "Automatic"):
                 continue
             group_box = QGroupBox(card_name)
             group_box.setFont(config.get_label_font())
@@ -76,6 +64,7 @@ class ParameterDialog(QDialog):
                 p_default = param.get("default", None)
                 p_constraints = param.get("constraints", {})
                 p_help = param.get("help", "")
+                p_display_name = param.get("display_name", p_name)
 
                 # Determine the displayed value:
                 # If user previously set this param, use that.
@@ -100,8 +89,7 @@ class ParameterDialog(QDialog):
                 row_widget = QWidget()
                 row_widget.setLayout(h_layout)
 
-                display_label = self.display_names.get(p_name, p_name)
-                label = QLabel(display_label + ":")
+                label = QLabel(p_display_name + ":")
                 label.setFont(config.get_label_font())
                 group_layout.addRow(label, row_widget)
 
@@ -109,15 +97,23 @@ class ParameterDialog(QDialog):
                     self.param_widgets[p_name] = (widget, p_help)
 
             group_box.setLayout(group_layout)
-            layout.addWidget(group_box)
+            container_layout.addWidget(group_box)
 
-        layout.addStretch()
+        container_layout.addStretch()
+
+        # Creamos un QScrollArea y establecemos el widget contenedor
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(container_widget)
+
+        # Añadimos el QScrollArea y los botones al layout principal
+        main_layout.addWidget(scroll_area)
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.setFont(config.get_button_font())
         button_box.accepted.connect(self.accept_parameters)
         button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+        main_layout.addWidget(button_box)
 
     def create_widget_for_type(self, p_type, p_value, p_name, p_constraints, card_name):
         # All parameters now use QLineEdit.
@@ -143,7 +139,6 @@ class ParameterDialog(QDialog):
                 line.setText("")
 
         elif p_type == "isotope":
-            # Create your QComboBox
             combo = QComboBox()
             isotope_list = sorted(self.isotopes.keys())
 
@@ -151,7 +146,7 @@ class ParameterDialog(QDialog):
             combo.addItem("")
             combo.addItems(isotope_list)
 
-            # Set the font for the combo box and the line edit as before
+            # Set the font for the combo box and the line edit
             font = config.get_label_font()
             combo.setFont(font)
             combo.lineEdit().setFont(font)
@@ -166,11 +161,15 @@ class ParameterDialog(QDialog):
             view.setFont(font)
             combo.setView(view)
 
-            # Set up the completer as needed
-            completer = QCompleter(isotope_list, combo)
+            # Set up the completer
+            completer = QCompleter(isotope_list, self)
             completer.setCaseSensitivity(Qt.CaseSensitive)
             completer.setFilterMode(Qt.MatchContains)
+            completer.popup().setFont(font)
             combo.setCompleter(completer)
+
+            # Store the valid items list in the combo box
+            combo.valid_items = isotope_list
 
             return combo
 
@@ -306,6 +305,9 @@ class ParameterDialog(QDialog):
                 if value == "":
                     self.parameters.pop(p_name, None)
                 else:
+                    if p_type == "isotope" and value not in widget.valid_items:
+                        self.show_error(f"'{value}' is not a valid isotope.")
+                        return
                     self.parameters[p_name] = value
 
         if self.module_name.lower() == "broadr":
