@@ -444,6 +444,17 @@ class MainWindow(QMainWindow):
                     lines.append(" ".join(sigz_values) + " /")
                 lines.append("0 /")
 
+            elif name == "GASPR":
+                # Card 1
+                nendf = p.get("nendf", "")
+                nin = p.get("nin", "")
+                nout = p.get("nout", "")
+
+                # Build the PURR module
+                lines.append("gaspr")
+                lines.append(f"{nendf} {nin} {nout}")
+
+
         if lines:
             lines.append("stop")
 
