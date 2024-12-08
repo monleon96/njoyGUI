@@ -61,6 +61,17 @@
       {
         "name": "Advanced",
         "parameters": [
+           {
+            "name": "nplot",
+            "display_name": "Graph output tape",
+            "type": "int",
+            "default": null,
+            "constraints": {
+              "min": -99,
+              "max": 99
+            },
+            "help": "<b>'nplot'</b><br><br>Unit for graphical output tape."
+            },
             {
             "name": "iprint",
             "display_name": "Print",

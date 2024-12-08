@@ -108,16 +108,13 @@ class MainWindow(QMainWindow):
                         p_default = param.get("default", None)
                         parameters[p_name] = p_default
 
-                if mod_model.module_name.lower() == "broadr":
-                    # Ensure temp2 is set correctly from the default
-                    # If p_default for temp2 was a number, convert it to a string
-                    if isinstance(parameters.get('temp2'), (int, float)):
-                        parameters['temp2'] = str(parameters['temp2'])  # "293.6"
-                    if not parameters.get('temp2', '').strip():
-                        parameters['temp2'] = "293.6"
-                    # Set ntemp2 based on temp2 count
-                    temps = parameters['temp2'].split()
-                    parameters['ntemp2'] = len(temps) if temps else 1
+                # Handle temperature parameters for both BROADR and PURR
+                if mod_model.module_name.lower() in ["broadr", "purr"]:
+                    temp_param = "temp2" if mod_model.module_name.lower() == "broadr" else "temp"
+                    if isinstance(parameters.get(temp_param), (int, float)):
+                        parameters[temp_param] = str(parameters[temp_param])
+                    if not parameters.get(temp_param, '').strip():
+                        parameters[temp_param] = "293.6"
 
                 # Make sure you include the description from the mod_model
                 module_dict = {
@@ -204,7 +201,14 @@ class MainWindow(QMainWindow):
             )
             if dialog.exec_():
                 updated_params = dialog.get_parameters()
-                mod_dict["parameters"] = updated_params
+                # Convert temperature parameter to string for PURR
+                if mod_dict["name"].lower() == "purr":
+                    temp_param = "temp"
+                    if isinstance(updated_params.get(temp_param), (int, float)):
+                        updated_params[temp_param] = str(updated_params[temp_param])
+                    if not updated_params.get(temp_param, '').strip():
+                        updated_params[temp_param] = "293.6"
+                self.added_modules[idx]["parameters"] = updated_params
                 self.update_preview()
 
     def update_preview(self):
@@ -220,7 +224,7 @@ class MainWindow(QMainWindow):
 
                 # Build the MODER module
                 lines.append("moder")
-                lines.append(f"{nin} {nout} /")
+                lines.append(f"{nin} {nout}")
 
             elif name == "RECONR":
                 # Card 1
@@ -260,7 +264,7 @@ class MainWindow(QMainWindow):
 
                 # Build the RECONR module
                 lines.append("reconr")
-                lines.append(f"{nendf} {npend} /")
+                lines.append(f"{nendf} {npend}")
                 lines.append(f"{label} /")
                 lines.append(f"{mat} /")
                 lines.append(card4_line)
@@ -305,7 +309,7 @@ class MainWindow(QMainWindow):
 
                 # Build the BROADR module
                 lines.append("broadr")
-                lines.append(f"{nendf} {nin} {nout} /")
+                lines.append(f"{nendf} {nin} {nout}")
                 lines.append(f"{mat_num} {ntemp2} /")
                 lines.append(card3_line)
                 if ntemp2 > 0:
@@ -317,6 +321,7 @@ class MainWindow(QMainWindow):
                 nendf = p.get("nendf", "")
                 nin = p.get("nin", "")
                 nout = p.get("nout", "")
+                nplot = p.get("nplot") or "0"  # Set default value to "0" if None or empty
 
                 # Card 2 mandatory parameters
                 mat_str = p.get("matd", "U235")
@@ -377,10 +382,30 @@ class MainWindow(QMainWindow):
 
                 # Build the HEATR module
                 lines.append("heatr")
-                lines.append(f"{nendf} {nin} {nout} /")
+                lines.append(f"{nendf} {nin} {nout} {nplot}")
                 lines.append(" ".join(card2_parts) + " /")
                 if npk > 0:
                     lines.append(" ".join(mtk_list) + " /")
+
+            elif name == "PURR":
+                # Card 1
+                nendf = p.get("nendf", "")
+                nin = p.get("nin", "")
+                nout = p.get("nout", "")
+
+                # Card 2
+                mat_str = p.get("matd", "U235")
+                mat_num = self.isotopes.get(mat_str, 9228)
+                temp_str = p.get("temp", "")
+                temps = temp_str.split()
+                ntemp = len(temps)
+
+                # Build the PURR module
+                lines.append("purr")
+                lines.append(f"{nendf} {nin} {nout}")
+                lines.append(f"{mat_num} {ntemp} /")
+                if ntemp > 0:
+                    lines.append(" ".join(temps) + " /")
 
         if lines:
             lines.append("stop")

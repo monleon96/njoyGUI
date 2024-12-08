@@ -9,7 +9,7 @@ class ModuleSelectionDialog(QDialog):
     def __init__(self, modules_available, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Select Module")
-        self.resize(400, 300)
+        self.resize(400, 500)
         self.modules_available = modules_available
         self.selected_module = None
         self.module_data = {}

@@ -10,7 +10,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
 
-    modules_available = ["MODER", "RECONR", "BROADR", "HEATR"]
+    modules_available = ["MODER", "RECONR", "BROADR", "HEATR", "PURR"]
     window = MainWindow(modules_available)
     window.show()
     sys.exit(app.exec_())
