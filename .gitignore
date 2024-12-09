@@ -1,9 +1,10 @@
 # Python
 __pycache__/
+*.pyc
 
 # VSCODE
 .vscode/
-njoyGUI.code-workspace
+*.code-workspace
 
 # Virtual Environment
 myenv/
