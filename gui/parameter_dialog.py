@@ -10,6 +10,8 @@ from PyQt5.QtGui import QDesktopServices, QRegExpValidator, QIntValidator, QFont
 
 from model import load_isotopes
 import config
+from config import get_dialog_element_font  # Import the new font function
+from config import get_button_style, BUTTON_HOVER_COLOR
 
 class ParameterDialog(QDialog):
     def __init__(self, module_name, cards, parameters, parent=None,  module_description=""):
@@ -22,11 +24,14 @@ class ParameterDialog(QDialog):
         self.isotopes = load_isotopes()
         self.setFixedSize(600, 600)
 
-        # Set Larger Font for the Entire Dialog
-        dialog_font = config.get_dialog_font()
-        self.setFont(dialog_font)
+        # Set default font size 10 for the entire dialog
+        self.setFont(get_dialog_element_font())
 
         self.init_ui()
+
+    def apply_button_style(self, button):
+        """Helper method to apply consistent button styling"""
+        button.setStyleSheet(get_button_style())
 
     def init_ui(self):
         # Create main layout
@@ -40,6 +45,8 @@ class ParameterDialog(QDialog):
         top_layout = QHBoxLayout()
         pdf_btn = QPushButton("View Manual")
         pdf_btn.setFont(config.get_button_font())
+        pdf_btn.setFixedWidth(120)  # Set a fixed width for the button
+        self.apply_button_style(pdf_btn)
         pdf_btn.clicked.connect(self.open_pdf)
         top_layout.addStretch()
         top_layout.addWidget(pdf_btn)
@@ -76,7 +83,7 @@ class ParameterDialog(QDialog):
                     p_value = p_default
 
                 widget = self.create_widget_for_type(p_type, p_value, p_name, p_constraints, card_name)
-                widget.setFont(config.get_label_font())
+                widget.setFont(get_dialog_element_font())
 
                 h_layout = QHBoxLayout()
                 h_layout.addWidget(widget)
@@ -90,7 +97,7 @@ class ParameterDialog(QDialog):
                 row_widget.setLayout(h_layout)
 
                 label = QLabel(p_display_name + ":")
-                label.setFont(config.get_label_font())
+                label.setFont(get_dialog_element_font())
                 group_layout.addRow(label, row_widget)
 
                 if p_type != "auto":
@@ -111,6 +118,12 @@ class ParameterDialog(QDialog):
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.setFont(config.get_button_font())
+        # Set a larger font for OK and Cancel buttons
+        for button in button_box.buttons():
+            font = button.font()
+            font.setPointSize(font.pointSize() + 2)  # Increase font size by 2 points
+            button.setFont(font)
+            self.apply_button_style(button)
         button_box.accepted.connect(self.accept_parameters)
         button_box.rejected.connect(self.reject)
         main_layout.addWidget(button_box)
@@ -120,23 +133,73 @@ class ParameterDialog(QDialog):
         line = QLineEdit()
 
         if p_type == "int":
-            # Integer validator
-            min_val = p_constraints.get("min", -99)
-            max_val = p_constraints.get("max", 99)
+            # Integer validator that respects only defined constraints
+            min_val = p_constraints.get("min", -2147483647)  # Use Python's min int as default
+            max_val = p_constraints.get("max", 2147483647)   # Use Python's max int as default
             int_validator = QIntValidator(min_val, max_val, self)
             line.setValidator(int_validator)
 
         elif p_type == "float":
-            # A regex that matches a positive float, optionally in scientific notation
-            float_regex = QRegExp(r'^\d+(\.\d+)?([eE][+-]?\d+)?$')
+            # Choose regex pattern based on min constraint
+            has_min_zero = p_constraints.get("min", float('-inf')) >= 0
+            if has_min_zero:
+                # Only positive numbers for parameters with min >= 0
+                float_regex = QRegExp(r'^\d*\.?\d*([eE][+-]?\d+)?$')
+            else:
+                # Allow negative numbers for parameters without min constraint or min < 0
+                float_regex = QRegExp(r'^-?\d*\.?\d*([eE][+-]?\d+)?$')
+            
             val = QRegExpValidator(float_regex, self)
             line.setValidator(val)
 
-            # If there's a default value, set it
             if p_value is not None:
-                line.setText(str(p_value))
+                if isinstance(p_value, str):
+                    line.setText(p_value)
             else:
                 line.setText("")
+
+        elif p_type == "option":
+            container = QWidget()
+            layout = QHBoxLayout(container)
+            layout.setContentsMargins(0, 0, 0, 0)
+            
+            # Create a button group to manage exclusive selection
+            button_group = []
+            
+            # Create toggle buttons for each option
+            options = p_constraints.get("options", ["Option1", "Option2", "Option3"])
+            for option in options:
+                btn = QPushButton(option)
+                btn.setCheckable(True)
+                btn.setAutoExclusive(True)
+                btn.setFont(config.get_dialog_element_font())  # Set font
+                # Modified style to keep hover color when checked
+                base_style = get_button_style()
+                btn.setStyleSheet(f"{base_style}\nQPushButton:checked {{background-color: {BUTTON_HOVER_COLOR.name()};}}")
+                if p_value == option:
+                    btn.setChecked(True)
+                button_group.append(btn)
+                layout.addWidget(btn)
+                
+            # Add clear button
+            clear_btn = QPushButton("x")
+            clear_btn.setFixedWidth(25)
+            clear_btn.setFont(config.get_dialog_element_font())  # Set font
+            self.apply_button_style(clear_btn)
+            
+            def clear_selection():
+                # Temporarily disable auto-exclusive behavior
+                for btn in button_group:
+                    btn.setAutoExclusive(False)
+                    btn.setChecked(False)
+                    btn.setAutoExclusive(True)
+                    
+            clear_btn.clicked.connect(clear_selection)
+            layout.addWidget(clear_btn)
+            
+            # Store buttons in the container for later access
+            container.buttons = button_group
+            return container
 
         elif p_type == "isotope":
             combo = QComboBox()
@@ -174,7 +237,7 @@ class ParameterDialog(QDialog):
             return combo
 
         elif p_type == "multi":
-            widget = self.create_multi_widget(p_value)
+            widget = self.create_multi_widget(p_value, p_name)
             return widget
 
         elif p_type == "auto":
@@ -241,6 +304,14 @@ class ParameterDialog(QDialog):
             p_def = self.find_parameter_definition(p_name)
             p_type = p_def["type"]
             constraints = p_def.get("constraints", {})
+            
+            # Check if parameter is mandatory by finding its card
+            is_mandatory = False
+            for card in self.cards:
+                if card["name"] == "Mandatory":
+                    if any(param["name"] == p_name for param in card["parameters"]):
+                        is_mandatory = True
+                        break
 
             if p_type == "multi":
                 # Handle the multi-type widget
@@ -270,7 +341,11 @@ class ParameterDialog(QDialog):
             if isinstance(widget, QLineEdit):
                 value_str = widget.text().strip()
                 if value_str == "":
-                    self.parameters.pop(p_name, None)
+                    if is_mandatory and "default" in p_def:
+                        # For mandatory parameters, use default value if input is empty
+                        self.parameters[p_name] = p_def["default"]
+                    else:
+                        self.parameters.pop(p_name, None)
                 else:
                     if p_type == "int":
                         # value_str should pass the validator, so it's an integer
@@ -303,12 +378,32 @@ class ParameterDialog(QDialog):
             elif isinstance(widget, QComboBox):
                 value = widget.currentText().strip()
                 if value == "":
-                    self.parameters.pop(p_name, None)
+                    if is_mandatory and "default" in p_def:
+                        # For mandatory parameters, use default value if input is empty
+                        self.parameters[p_name] = p_def["default"]
+                    else:
+                        self.parameters.pop(p_name, None)
                 else:
                     if p_type == "isotope" and value not in widget.valid_items:
                         self.show_error(f"'{value}' is not a valid isotope.")
                         return
                     self.parameters[p_name] = value
+
+            elif p_type == "option":
+                # Handle the option-type widget with toggle buttons
+                selected_value = None
+                for btn in widget.buttons:
+                    if btn.isChecked():
+                        selected_value = btn.text()
+                        break
+                if selected_value:
+                    self.parameters[p_name] = selected_value
+                else:
+                    if is_mandatory and "default" in p_def:
+                        # For mandatory parameters, use default value if nothing selected
+                        self.parameters[p_name] = p_def["default"]
+                    else:
+                        self.parameters.pop(p_name, None)
 
         if self.module_name.lower() == "broadr":
             temp2_str = self.parameters.get("temp2", "")
@@ -340,7 +435,7 @@ class ParameterDialog(QDialog):
             QMessageBox.warning(self, "PDF not found", f"Could not open {pdf_path}. Ensure the file exists.")
 
 
-    def create_multi_widget(self, p_value):
+    def create_multi_widget(self, p_value, p_name):
         container = QWidget()
         v_layout = QVBoxLayout(container)
         v_layout.setContentsMargins(0, 0, 0, 0)
@@ -348,43 +443,98 @@ class ParameterDialog(QDialog):
 
         container.line_edits = []
 
-        def add_line(value=""):
+        def get_current_values():
+            return [edit.text().strip() for edit in container.line_edits if edit.text().strip()]
+
+        def validate_value(value):
+            if not value:
+                return True
+            try:
+                val = float(value)
+                # Check constraints from parameter definition
+                p_def = self.find_parameter_definition(p_name)
+                constraints = p_def.get("constraints", {})
+                if "min" in constraints and val < constraints["min"]:
+                    QMessageBox.warning(container, "Invalid Value", 
+                                    f"Value must be >= {constraints['min']}")
+                    return False
+                if "max" in constraints and val > constraints["max"]:
+                    QMessageBox.warning(container, "Invalid Value", 
+                                    f"Value must be <= {constraints['max']}")
+                    return False
+            except ValueError:
+                QMessageBox.warning(container, "Invalid Value", 
+                                "Please enter a valid number")
+                return False
+                
+            current_values = get_current_values()
+            return value not in current_values
+
+        def create_value_line(value):
             line_layout = QHBoxLayout()
             line_edit = QLineEdit()
-            line_edit.setText(value)
+            # Preserve scientific notation if present
+            if isinstance(value, str) and 'e' in value.lower():
+                line_edit.setText(value)  # Keep original format
+            else:
+                line_edit.setText(str(value))
             line_edit.setFont(config.get_label_font())
+            
             remove_btn = QPushButton("x")
             remove_btn.setFixedWidth(25)
-            remove_btn.setFont(config.get_label_font()) 
-
+            remove_btn.setFont(config.get_label_font())
+            self.apply_button_style(remove_btn)
+            
             def remove_line():
                 v_layout.removeItem(line_layout)
-                line_layout.removeWidget(line_edit)
-                line_layout.removeWidget(remove_btn)
                 line_edit.deleteLater()
                 remove_btn.deleteLater()
                 container.line_edits.remove(line_edit)
-
+            
             remove_btn.clicked.connect(remove_line)
-
+            
             line_layout.addWidget(line_edit)
             line_layout.addWidget(remove_btn)
             v_layout.addLayout(line_layout)
             container.line_edits.append(line_edit)
-
-        # Initialize the lines from p_value
+            
+        def on_add():
+            text = input_line.text().strip()
+            if text and validate_value(text):
+                create_value_line(text)
+                input_line.setText("")
+            elif text and text in get_current_values():
+                QMessageBox.warning(container, "Duplicate Value", 
+                                 "This value is already in the list!")
+        
+        input_layout = QHBoxLayout()
+        input_line = QLineEdit()
+        input_line.setFont(config.get_label_font())
+        # Override key press event to fully capture Enter
+        def keyPressEvent(event):
+            if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+                on_add()
+                event.accept()  # Prevent propagation
+            else:
+                QLineEdit.keyPressEvent(input_line, event)  # Handle other keys normally
+                
+        input_line.keyPressEvent = keyPressEvent
+        
+        add_btn = QPushButton("Add")
+        add_btn.setFixedWidth(50)
+        add_btn.setFont(config.get_label_font())
+        self.apply_button_style(add_btn)
+        
+        add_btn.clicked.connect(on_add)
+        
+        # Add the input line with Add button at the top
+        input_layout.addWidget(input_line)
+        input_layout.addWidget(add_btn)
+        v_layout.addLayout(input_layout)
+        
+        # Initialize existing values below the input line
         values = str(p_value).split() if p_value else []
         for val in values:
-            add_line(val)
-
-        # If no default given, start with one empty line or just skip:
-        if not values:
-            add_line("")
-
-        add_btn = QPushButton("+")
-        add_btn.setFixedWidth(25)
-        add_btn.setFont(config.get_label_font())  # Opcional: también aplicar la fuente al botón de añadir
-        add_btn.clicked.connect(lambda: add_line(""))
-        v_layout.addWidget(add_btn, 0, Qt.AlignLeft)
+            create_value_line(val)
 
         return container

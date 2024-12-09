@@ -6,12 +6,15 @@ from PyQt5.QtWidgets import (
     QSizePolicy
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 
 from model import load_module, load_isotopes
 from gui.module_item import ModuleItem
 from gui.module_selection_dialog import ModuleSelectionDialog
 from gui.parameter_dialog import ParameterDialog
-import config  # Import the configuration module
+import config 
+from config import get_large_button_font, get_dialog_font  
+import json 
 
 class MainWindow(QMainWindow):
     def __init__(self, modules_available):
@@ -44,10 +47,31 @@ class MainWindow(QMainWindow):
         left_layout.setContentsMargins(5, 5, 5, 5)  # Margins inside left panel
         left_layout.setSpacing(5)  # Spacing inside left panel
 
+        # Add buttons container for horizontal layout BEFORE add_module_btn
+        buttons_container = QHBoxLayout()
+        
+        self.save_config_btn = QPushButton("Save Workflow")
+        self.save_config_btn.setMinimumSize(120, 30)  # Slightly smaller height
+        save_load_font = QFont()
+        save_load_font.setPointSize(config.LARGE_BUTTON_FONT_SIZE - 1)  # One point smaller
+        self.save_config_btn.setFont(save_load_font)
+        self.save_config_btn.clicked.connect(self.save_configuration)
+        
+        self.load_config_btn = QPushButton("Load Workflow")
+        self.load_config_btn.setMinimumSize(120, 30)  # Slightly smaller height
+        self.load_config_btn.setFont(save_load_font)
+        self.load_config_btn.clicked.connect(self.load_configuration)
+        
+        buttons_container.addWidget(self.save_config_btn)
+        buttons_container.addWidget(self.load_config_btn)
+        
+        left_layout.addLayout(buttons_container)
+
         self.add_module_btn = QPushButton("Add Module")
         self.add_module_btn.setMinimumSize(120, 35)
         # **Set Font for 'Add Module' Button**
         self.add_module_btn.setFont(config.get_button_font())
+        self.add_module_btn.setFont(get_large_button_font())
         self.add_module_btn.clicked.connect(self.add_module)
         left_layout.addWidget(self.add_module_btn)
 
@@ -66,6 +90,7 @@ class MainWindow(QMainWindow):
         self.generate_btn.setMinimumSize(120, 30)
         # **Set Font for 'Generate NJOY Input' Button**
         self.generate_btn.setFont(config.get_button_font())
+        self.generate_btn.setFont(get_large_button_font())
         self.generate_btn.clicked.connect(self.generate_njoy_input)
         left_layout.addWidget(self.generate_btn)
 
@@ -78,7 +103,7 @@ class MainWindow(QMainWindow):
         self.preview_text.setReadOnly(True)
         self.preview_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
-        # **Set Larger Font for Preview Text**
+        # Set larger font for preview text
         preview_font = config.get_preview_font()
         self.preview_text.setFont(preview_font)
         
@@ -105,16 +130,13 @@ class MainWindow(QMainWindow):
                         p_default = param.get("default", None)
                         parameters[p_name] = p_default
 
-                if mod_model.module_name.lower() == "broadr":
-                    # Ensure temp2 is set correctly from the default
-                    # If p_default for temp2 was a number, convert it to a string
-                    if isinstance(parameters.get('temp2'), (int, float)):
-                        parameters['temp2'] = str(parameters['temp2'])  # "293.6"
-                    if not parameters.get('temp2', '').strip():
-                        parameters['temp2'] = "293.6"
-                    # Set ntemp2 based on temp2 count
-                    temps = parameters['temp2'].split()
-                    parameters['ntemp2'] = len(temps) if temps else 1
+                # Handle temperature parameters for both BROADR and PURR
+                if mod_model.module_name.lower() in ["broadr", "purr"]:
+                    temp_param = "temp2" if mod_model.module_name.lower() == "broadr" else "temp"
+                    if isinstance(parameters.get(temp_param), (int, float)):
+                        parameters[temp_param] = str(parameters[temp_param])
+                    if not parameters.get(temp_param, '').strip():
+                        parameters[temp_param] = "293.6"
 
                 # Make sure you include the description from the mod_model
                 module_dict = {
@@ -201,7 +223,14 @@ class MainWindow(QMainWindow):
             )
             if dialog.exec_():
                 updated_params = dialog.get_parameters()
-                mod_dict["parameters"] = updated_params
+                # Convert temperature parameter to string for PURR
+                if mod_dict["name"].lower() == "purr":
+                    temp_param = "temp"
+                    if isinstance(updated_params.get(temp_param), (int, float)):
+                        updated_params[temp_param] = str(updated_params[temp_param])
+                    if not updated_params.get(temp_param, '').strip():
+                        updated_params[temp_param] = "293.6"
+                self.added_modules[idx]["parameters"] = updated_params
                 self.update_preview()
 
     def update_preview(self):
@@ -217,7 +246,7 @@ class MainWindow(QMainWindow):
 
                 # Build the MODER module
                 lines.append("moder")
-                lines.append(f"{nin} {nout} /")
+                lines.append(f"{nin} {nout}")
 
             elif name == "RECONR":
                 # Card 1
@@ -227,37 +256,44 @@ class MainWindow(QMainWindow):
                 # Card 2 (label)
                 isotope = p.get("mat", "U235")
                 mat = self.isotopes.get(isotope, 9228)
-                label = f"reconstructed data for '{isotope}' @ {p.get('tempr', '0')} K"
+                
+                # Get tempr value from parameters, use 0 as default for label
+                tempr = p.get("tempr")
+                try:
+                    if tempr is not None:
+                        tempr = float(tempr)
+                    else:
+                        tempr = 0.0
+                except (ValueError, TypeError):
+                    tempr = 0.0
+                
+                # Always show temperature in label
+                label = f'reconstructed data for {isotope} @ {tempr} K'
 
                 # Card 3
                 tolerance_str = p.get("err", "0.001")
                 tolerance = float(tolerance_str)
 
                 # Get optional parameters
-                user_tempr = p.get("tempr")
                 user_errmax = p.get("errmax")
                 user_errint = p.get("errint")
 
-                # Build Card 4 with dependencies
+                # Build Card 4 with dependencies (keep tempr optional in card 4)
                 card4_parts = [str(tolerance)]
                 if user_errint is not None:
                     if user_errmax is None:
                         user_errmax = 10 * tolerance
-                    if user_tempr is None:
-                        user_tempr = 0.0
-                    card4_parts.extend([str(user_tempr), str(user_errmax), str(user_errint)])
+                    card4_parts.extend([str(p.get("tempr", 0.0)), str(user_errmax), str(user_errint)])
                 elif user_errmax is not None:
-                    if user_tempr is None:
-                        user_tempr = 0.0
-                    card4_parts.extend([str(user_tempr), str(user_errmax)])
-                elif user_tempr is not None:
-                    card4_parts.append(str(user_tempr))
+                    card4_parts.extend([str(p.get("tempr", 0.0)), str(user_errmax)])
+                elif p.get("tempr") is not None:
+                    card4_parts.append(str(tempr))
 
                 card4_line = " ".join(card4_parts) + " /"
 
                 # Build the RECONR module
                 lines.append("reconr")
-                lines.append(f"{nendf} {npend} /")
+                lines.append(f"{nendf} {npend}")
                 lines.append(f"{label} /")
                 lines.append(f"{mat} /")
                 lines.append(card4_line)
@@ -302,12 +338,185 @@ class MainWindow(QMainWindow):
 
                 # Build the BROADR module
                 lines.append("broadr")
-                lines.append(f"{nendf} {nin} {nout} /")
+                lines.append(f"{nendf} {nin} {nout}")
                 lines.append(f"{mat_num} {ntemp2} /")
                 lines.append(card3_line)
                 if ntemp2 > 0:
                     lines.append(" ".join(temps) + " /")
                 lines.append("0 /")
+
+            elif name == "HEATR":
+                # Card 1
+                nendf = p.get("nendf", "")
+                nin = p.get("nin", "")
+                nout = p.get("nout", "")
+                nplot = p.get("nplot") or "0"  # Set default value to "0" if None or empty
+
+                # Card 2 mandatory parameters
+                mat_str = p.get("matd", "U235")
+                mat_num = self.isotopes.get(mat_str, 9228)
+                mtk_str = p.get("mtk", "")
+                mtk_list = str(mtk_str).split()
+                npk = len(mtk_list)
+
+                # Handle optional Card 2 parameters
+                user_ed = p.get("ed")
+                user_iprint = p.get("iprint")
+                user_local = p.get("local")
+                
+                # Convert text options to numbers - simplified iprint handling
+                if user_iprint == "min":
+                    iprint = 0
+                elif user_iprint == "max":
+                    iprint = 1
+                else:
+                    iprint = None
+
+                if user_local == "Transported":
+                    local = 0
+                elif user_local == "Deposited":
+                    local = 1
+                else:
+                    local = None
+
+                # Build Card 2 based on rightmost specified parameter
+                card2_parts = [str(mat_num), str(npk)]
+                
+                if user_ed is not None:
+                    # If ed is specified, include all parameters
+                    card2_parts.extend([
+                        "0",  # nqa
+                        "0",  # ntemp
+                        str(local if local is not None else 0),
+                        str(iprint if iprint is not None else 0),
+                        str(user_ed)
+                    ])
+                elif user_iprint is not None:
+                    # If iprint is specified (but not ed), include up to iprint
+                    card2_parts.extend([
+                        "0",  # nqa
+                        "0",  # ntemp
+                        str(local if local is not None else 0),
+                        str(iprint)
+                    ])
+                elif user_local is not None:
+                    # If only local is specified, include up to local
+                    card2_parts.extend([
+                        "0",  # nqa
+                        "0",  # ntemp
+                        str(local)
+                    ])
+
+                # Build the HEATR module
+                lines.append("heatr")
+                lines.append(f"{nendf} {nin} {nout} {nplot}")
+                lines.append(" ".join(card2_parts) + " /")
+                if npk > 0:
+                    lines.append(" ".join(mtk_list) + " /")
+
+            elif name == "PURR":
+                # Card 1
+                nendf = p.get("nendf", "")
+                nin = p.get("nin", "")
+                nout = p.get("nout", "")
+
+                # Card 2
+                mat_str = p.get("matd", "U235")
+                mat_num = self.isotopes.get(mat_str, 9228)
+                
+                # Process temperatures
+                temp_str = str(p.get("temp", ""))  # Ensure temp is a string
+                temps = temp_str.split()
+                ntemp = len(temps)
+                
+                # Process sigma zero values
+                sigz_str = str(p.get("sigz", ""))  # Ensure sigz is a string
+                sigz_values = sigz_str.split()
+                nsigz = len(sigz_values)
+                
+                # Get optional parameters
+                nbin = p.get("nbin", "20")
+                nladr = p.get("nladr", "64")
+                user_iprint = p.get("iprint")
+                nunx = p.get("nunx")
+                
+                # Convert text options to numbers - fixed iprint handling
+                if user_iprint == "min":
+                    iprint = 0
+                elif user_iprint == "max":
+                    iprint = 1
+                else:
+                    iprint = None
+                    
+                # Build card 2 parameters
+                card2_parts = [str(mat_num), str(ntemp), str(nsigz), str(nbin), str(nladr)]
+                
+                # Add iprint and nunx if either is specified
+                if nunx is not None or user_iprint is not None:
+                    card2_parts.append(str(iprint if iprint is not None else "1"))
+                    card2_parts.append(str(nunx if nunx is not None else ""))
+
+                # Build the PURR module
+                lines.append("purr")
+                lines.append(f"{nendf} {nin} {nout}")
+                lines.append(" ".join(card2_parts) + " /")
+                if ntemp > 0:
+                    lines.append(" ".join(temps) + " /")
+                if nsigz > 0:
+                    lines.append(" ".join(sigz_values) + " /")
+                lines.append("0 /")
+
+            elif name == "GASPR":
+                # Card 1
+                nendf = p.get("nendf", "")
+                nin = p.get("nin", "")
+                nout = p.get("nout", "")
+
+                # Build the PURR module
+                lines.append("gaspr")
+                lines.append(f"{nendf} {nin} {nout}")
+
+            elif name == "ACER":
+                # Card 1
+                nendf = p.get("nendf", "")
+                npend = p.get("npend", "")
+                ngend = p.get("ngend", "")
+                nace = p.get("nace", "")
+                ndir = p.get("ndir", "")
+
+                # Process iprint
+                user_iprint = p.get("iprint")
+                if user_iprint == "min":
+                    iprint = 0
+                elif user_iprint == "max":
+                    iprint = 1
+                else:
+                    iprint = 1  # default value
+
+                # Get itype and suff
+                itype = p.get("itype", 1)
+                if itype is None:
+                    itype = 1
+                suff = p.get("suff", "")
+                iopt = p.get("iopt", "")
+                suff_trunc = int(suff * 100) / 100 if suff > 0 else suff
+
+                # Get material and temperature
+                isotope = p.get("matd", "U235")
+                mat_num = self.isotopes.get(isotope, 9228)
+                tempd = p.get("tempd", "")
+
+                # Generate automatic hk label
+                hk = f"{isotope} @ {tempd} K ACE data"
+
+                # Build the ACER module
+                lines.append("acer")
+                lines.append(f"{nendf} {npend} {ngend} {nace} {ndir}")
+                lines.append(f"{iopt} {iprint} {itype} {suff_trunc:.2f} /")
+                lines.append(f"'{hk}' /")
+                lines.append(f"{mat_num} {tempd} /")
+                lines.append('/')
+                lines.append('/')
 
         if lines:
             lines.append("stop")
@@ -320,4 +529,77 @@ class MainWindow(QMainWindow):
         if file_dialog[0]:
             with open(file_dialog[0], 'w') as f:
                 f.write(self.preview_text.toPlainText())
-            QMessageBox.information(self, "Success", f"NJOY input saved to {file_dialog[0]}")
+            msg = QMessageBox(self)
+            msg.setFont(get_dialog_font())
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(f"NJOY input saved to {file_dialog[0]}")
+            msg.setWindowTitle("Success")
+            msg.exec_()
+
+    def save_configuration(self):
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Configuration",
+            "",
+            "JSON Files (*.json);;All Files (*.*)"
+        )
+        if file_path:
+            config_data = {
+                "modules": self.added_modules
+            }
+            try:
+                with open(file_path, 'w') as f:
+                    json.dump(config_data, f, indent=2)
+                msg = QMessageBox(self)
+                msg.setFont(get_dialog_font())
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Configuration saved successfully!")
+                msg.setWindowTitle("Success")
+                msg.exec_()
+            except Exception as e:
+                msg = QMessageBox(self)
+                msg.setFont(get_dialog_font())
+                msg.setIcon(QMessageBox.Critical)
+                msg.setText(f"Failed to save configuration: {str(e)}")
+                msg.setWindowTitle("Error")
+                msg.exec_()
+
+    def load_configuration(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load Configuration",
+            "",
+            "JSON Files (*.json);;All Files (*.*)"
+        )
+        if file_path:
+            try:
+                with open(file_path, 'r') as f:
+                    config_data = json.load(f)
+                
+                # Clear existing modules
+                self.added_modules.clear()
+                for i in reversed(range(self.module_list_container.count())):
+                    widget = self.module_list_container.itemAt(i).widget()
+                    self.module_list_container.removeWidget(widget)
+                    widget.deleteLater()
+                
+                # Load new modules
+                if "modules" in config_data:
+                    self.added_modules = config_data["modules"]
+                    for module in self.added_modules:
+                        self.add_module_item(module)
+                    
+                self.update_preview()
+                msg = QMessageBox(self)
+                msg.setFont(get_dialog_font())
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Configuration loaded successfully!")
+                msg.setWindowTitle("Success")
+                msg.exec_()
+            except Exception as e:
+                msg = QMessageBox(self)
+                msg.setFont(get_dialog_font())
+                msg.setIcon(QMessageBox.Critical)
+                msg.setText(f"Failed to load configuration: {str(e)}")
+                msg.setWindowTitle("Error")
+                msg.exec_()

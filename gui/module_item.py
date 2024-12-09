@@ -72,7 +72,7 @@ class ModuleItem(QWidget):
         
         # **Set Larger Font for Buttons**
         button_font = config.get_button_font()
-        for btn in [edit_btn, up_btn, down_btn, remove_btn]:
+        for btn in [edit_btn, up_btn, down_btn, remove_btn, info_btn]:  # Added info_btn
             btn.setFont(button_font)
         
         # Connect signals
