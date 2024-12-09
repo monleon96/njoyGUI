@@ -6,13 +6,15 @@ from PyQt5.QtWidgets import (
     QSizePolicy
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 
 from model import load_module, load_isotopes
 from gui.module_item import ModuleItem
 from gui.module_selection_dialog import ModuleSelectionDialog
 from gui.parameter_dialog import ParameterDialog
-import config  # Import the configuration module
-from config import get_large_button_font 
+import config 
+from config import get_large_button_font, get_dialog_font  
+import json 
 
 class MainWindow(QMainWindow):
     def __init__(self, modules_available):
@@ -44,6 +46,26 @@ class MainWindow(QMainWindow):
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(5, 5, 5, 5)  # Margins inside left panel
         left_layout.setSpacing(5)  # Spacing inside left panel
+
+        # Add buttons container for horizontal layout BEFORE add_module_btn
+        buttons_container = QHBoxLayout()
+        
+        self.save_config_btn = QPushButton("Save Workflow")
+        self.save_config_btn.setMinimumSize(120, 30)  # Slightly smaller height
+        save_load_font = QFont()
+        save_load_font.setPointSize(config.LARGE_BUTTON_FONT_SIZE - 1)  # One point smaller
+        self.save_config_btn.setFont(save_load_font)
+        self.save_config_btn.clicked.connect(self.save_configuration)
+        
+        self.load_config_btn = QPushButton("Load Workflow")
+        self.load_config_btn.setMinimumSize(120, 30)  # Slightly smaller height
+        self.load_config_btn.setFont(save_load_font)
+        self.load_config_btn.clicked.connect(self.load_configuration)
+        
+        buttons_container.addWidget(self.save_config_btn)
+        buttons_container.addWidget(self.load_config_btn)
+        
+        left_layout.addLayout(buttons_container)
 
         self.add_module_btn = QPushButton("Add Module")
         self.add_module_btn.setMinimumSize(120, 35)
@@ -507,4 +529,77 @@ class MainWindow(QMainWindow):
         if file_dialog[0]:
             with open(file_dialog[0], 'w') as f:
                 f.write(self.preview_text.toPlainText())
-            QMessageBox.information(self, "Success", f"NJOY input saved to {file_dialog[0]}")
+            msg = QMessageBox(self)
+            msg.setFont(get_dialog_font())
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(f"NJOY input saved to {file_dialog[0]}")
+            msg.setWindowTitle("Success")
+            msg.exec_()
+
+    def save_configuration(self):
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Configuration",
+            "",
+            "JSON Files (*.json);;All Files (*.*)"
+        )
+        if file_path:
+            config_data = {
+                "modules": self.added_modules
+            }
+            try:
+                with open(file_path, 'w') as f:
+                    json.dump(config_data, f, indent=2)
+                msg = QMessageBox(self)
+                msg.setFont(get_dialog_font())
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Configuration saved successfully!")
+                msg.setWindowTitle("Success")
+                msg.exec_()
+            except Exception as e:
+                msg = QMessageBox(self)
+                msg.setFont(get_dialog_font())
+                msg.setIcon(QMessageBox.Critical)
+                msg.setText(f"Failed to save configuration: {str(e)}")
+                msg.setWindowTitle("Error")
+                msg.exec_()
+
+    def load_configuration(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load Configuration",
+            "",
+            "JSON Files (*.json);;All Files (*.*)"
+        )
+        if file_path:
+            try:
+                with open(file_path, 'r') as f:
+                    config_data = json.load(f)
+                
+                # Clear existing modules
+                self.added_modules.clear()
+                for i in reversed(range(self.module_list_container.count())):
+                    widget = self.module_list_container.itemAt(i).widget()
+                    self.module_list_container.removeWidget(widget)
+                    widget.deleteLater()
+                
+                # Load new modules
+                if "modules" in config_data:
+                    self.added_modules = config_data["modules"]
+                    for module in self.added_modules:
+                        self.add_module_item(module)
+                    
+                self.update_preview()
+                msg = QMessageBox(self)
+                msg.setFont(get_dialog_font())
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Configuration loaded successfully!")
+                msg.setWindowTitle("Success")
+                msg.exec_()
+            except Exception as e:
+                msg = QMessageBox(self)
+                msg.setFont(get_dialog_font())
+                msg.setIcon(QMessageBox.Critical)
+                msg.setText(f"Failed to load configuration: {str(e)}")
+                msg.setWindowTitle("Error")
+                msg.exec_()
