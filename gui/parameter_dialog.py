@@ -140,8 +140,15 @@ class ParameterDialog(QDialog):
             line.setValidator(int_validator)
 
         elif p_type == "float":
-            # A regex that matches a positive float, optionally in scientific notation
-            float_regex = QRegExp(r'^\d+(\.\d+)?([eE][+-]?\d+)?$')
+            # Choose regex pattern based on min constraint
+            has_min_zero = p_constraints.get("min", float('-inf')) >= 0
+            if has_min_zero:
+                # Only positive numbers for parameters with min >= 0
+                float_regex = QRegExp(r'^\d*\.?\d*([eE][+-]?\d+)?$')
+            else:
+                # Allow negative numbers for parameters without min constraint or min < 0
+                float_regex = QRegExp(r'^-?\d*\.?\d*([eE][+-]?\d+)?$')
+            
             val = QRegExpValidator(float_regex, self)
             line.setValidator(val)
 
@@ -297,6 +304,14 @@ class ParameterDialog(QDialog):
             p_def = self.find_parameter_definition(p_name)
             p_type = p_def["type"]
             constraints = p_def.get("constraints", {})
+            
+            # Check if parameter is mandatory by finding its card
+            is_mandatory = False
+            for card in self.cards:
+                if card["name"] == "Mandatory":
+                    if any(param["name"] == p_name for param in card["parameters"]):
+                        is_mandatory = True
+                        break
 
             if p_type == "multi":
                 # Handle the multi-type widget
@@ -326,7 +341,11 @@ class ParameterDialog(QDialog):
             if isinstance(widget, QLineEdit):
                 value_str = widget.text().strip()
                 if value_str == "":
-                    self.parameters.pop(p_name, None)
+                    if is_mandatory and "default" in p_def:
+                        # For mandatory parameters, use default value if input is empty
+                        self.parameters[p_name] = p_def["default"]
+                    else:
+                        self.parameters.pop(p_name, None)
                 else:
                     if p_type == "int":
                         # value_str should pass the validator, so it's an integer
@@ -359,7 +378,11 @@ class ParameterDialog(QDialog):
             elif isinstance(widget, QComboBox):
                 value = widget.currentText().strip()
                 if value == "":
-                    self.parameters.pop(p_name, None)
+                    if is_mandatory and "default" in p_def:
+                        # For mandatory parameters, use default value if input is empty
+                        self.parameters[p_name] = p_def["default"]
+                    else:
+                        self.parameters.pop(p_name, None)
                 else:
                     if p_type == "isotope" and value not in widget.valid_items:
                         self.show_error(f"'{value}' is not a valid isotope.")
@@ -376,7 +399,11 @@ class ParameterDialog(QDialog):
                 if selected_value:
                     self.parameters[p_name] = selected_value
                 else:
-                    self.parameters.pop(p_name, None)
+                    if is_mandatory and "default" in p_def:
+                        # For mandatory parameters, use default value if nothing selected
+                        self.parameters[p_name] = p_def["default"]
+                    else:
+                        self.parameters.pop(p_name, None)
 
         if self.module_name.lower() == "broadr":
             temp2_str = self.parameters.get("temp2", "")

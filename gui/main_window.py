@@ -246,7 +246,7 @@ class MainWindow(QMainWindow):
                     tempr = 0.0
                 
                 # Always show temperature in label
-                label = f"reconstructed data for '{isotope}' @ {tempr} K"
+                label = f'reconstructed data for {isotope} @ {tempr} K'
 
                 # Card 3
                 tolerance_str = p.get("err", "0.001")
@@ -454,6 +454,47 @@ class MainWindow(QMainWindow):
                 lines.append("gaspr")
                 lines.append(f"{nendf} {nin} {nout}")
 
+            elif name == "ACER":
+                # Card 1
+                nendf = p.get("nendf", "")
+                npend = p.get("npend", "")
+                ngend = p.get("ngend", "")
+                nace = p.get("nace", "")
+                ndir = p.get("ndir", "")
+
+                # Process iprint
+                user_iprint = p.get("iprint")
+                if user_iprint == "min":
+                    iprint = 0
+                elif user_iprint == "max":
+                    iprint = 1
+                else:
+                    iprint = 1  # default value
+
+                # Get itype and suff
+                itype = p.get("itype", 1)
+                if itype is None:
+                    itype = 1
+                suff = p.get("suff", "")
+                iopt = p.get("iopt", "")
+                suff_trunc = int(suff * 100) / 100 if suff > 0 else suff
+
+                # Get material and temperature
+                isotope = p.get("matd", "U235")
+                mat_num = self.isotopes.get(isotope, 9228)
+                tempd = p.get("tempd", "")
+
+                # Generate automatic hk label
+                hk = f"{isotope} @ {tempd} K ACE data"
+
+                # Build the ACER module
+                lines.append("acer")
+                lines.append(f"{nendf} {npend} {ngend} {nace} {ndir}")
+                lines.append(f"{iopt} {iprint} {itype} {suff_trunc:.2f} /")
+                lines.append(f"'{hk}' /")
+                lines.append(f"{mat_num} {tempd} /")
+                lines.append('/')
+                lines.append('/')
 
         if lines:
             lines.append("stop")
