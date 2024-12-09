@@ -292,6 +292,7 @@ class MainWindow(QMainWindow):
                 card4_line = " ".join(card4_parts) + " /"
 
                 # Build the RECONR module
+                lines.append("-- reconstruct, linearise and unionize data")
                 lines.append("reconr")
                 lines.append(f"{nendf} {npend}")
                 lines.append(f"{label} /")
@@ -337,6 +338,7 @@ class MainWindow(QMainWindow):
                 card3_line = " ".join(card3_parts) + " /"
 
                 # Build the BROADR module
+                lines.append("-- calculate doppler broadening")
                 lines.append("broadr")
                 lines.append(f"{nendf} {nin} {nout}")
                 lines.append(f"{mat_num} {ntemp2} /")
@@ -408,6 +410,7 @@ class MainWindow(QMainWindow):
                     ])
 
                 # Build the HEATR module
+                lines.append("-- calculate heating values")
                 lines.append("heatr")
                 lines.append(f"{nendf} {nin} {nout} {nplot}")
                 lines.append(" ".join(card2_parts) + " /")
@@ -457,6 +460,7 @@ class MainWindow(QMainWindow):
                     card2_parts.append(str(nunx if nunx is not None else ""))
 
                 # Build the PURR module
+                lines.append("-- calculate ptables")
                 lines.append("purr")
                 lines.append(f"{nendf} {nin} {nout}")
                 lines.append(" ".join(card2_parts) + " /")
@@ -473,6 +477,7 @@ class MainWindow(QMainWindow):
                 nout = p.get("nout", "")
 
                 # Build the PURR module
+                lines.append("-- calculate production")
                 lines.append("gaspr")
                 lines.append(f"{nendf} {nin} {nout}")
 
@@ -510,6 +515,7 @@ class MainWindow(QMainWindow):
                 hk = f"{isotope} @ {tempd} K ACE data"
 
                 # Build the ACER module
+                lines.append("-- generate ACE file")
                 lines.append("acer")
                 lines.append(f"{nendf} {npend} {ngend} {nace} {ndir}")
                 lines.append(f"{iopt} {iprint} {itype} {suff_trunc:.2f} /")
@@ -517,6 +523,16 @@ class MainWindow(QMainWindow):
                 lines.append(f"{mat_num} {tempd} /")
                 lines.append('/')
                 lines.append('/')
+
+            if name == "VIEWR":
+                # Card 1
+                nin = p.get("infile", "")
+                nout = p.get("nps", "")
+
+                # Build the MODER module
+                lines.append("-- produce plots")
+                lines.append("viewr")
+                lines.append(f"{nin} {nout}")
 
         if lines:
             lines.append("stop")

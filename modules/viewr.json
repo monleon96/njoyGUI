@@ -1,0 +1,35 @@
+{
+    "name": "VIEWR",
+    "description": "<b>VIEWR</b><br><br>The VIEWR module provides a general-purpose plotting capability for NJOY. It reads in user commands that define a variety of 2-D and 3-D graphs, and then it writes a Postscript file to display the graphs with high quality. Some of the capabilities of VIEWR include:<br><ul><li>Conventional 2-D plots (for example, cross section vs energy) with the normal combinations of linear and log scales, automatic or user-specified ranges and labels, an optional alternate right-hand axis, and with one or two title lines.</li><li>Curves of various line patterns, labeled with tags and arrows or described in a legend block.</li><li>Data points given with a variety of symbols with error bars (they can be identified in a legend block).</li><li>The superposition of several plots on a given set of axes.</li><li>Detailed 3-D perspective plots for data such as angular distributions or energy distributions, with a choice of linear or log axes, with a choice of working area and viewpoint, and with one or two title lines.</li><li>Color can be used to distinguish between different curves, and the graphics window area and page background can also have selected colors.</li><li>Closed regions can be displayed with various kinds of cross hatching for filled with selected colors.</li><li>Multiple plots can be put on each page.</li></ul>",
+    "tooltip": "Plot NJOY data in 2-D and 3-D graphs.",
+    "cards": [
+      {
+        "name": "Mandatory",
+        "parameters": [
+          {
+            "name": "infile",
+            "display_name": "Input tape",
+            "type": "int",
+            "default": 90,
+            "constraints": {
+              "min": -99,
+              "max": 99
+            },
+            "help": "<b>'infile'</b><br><br>Input unit number"
+          },
+          {
+            "name": "nps",
+            "display_name": "Postscript output tape",
+            "type": "int",
+            "default": 91,
+            "constraints": {
+              "min": -99,
+              "max": 99
+            },
+            "help": "<b>nps</b><br><br>Output unit number for Postscript file. If you need the plots in PDF format, you can use a Postscript viewer or converter (e.g., Ghostscript or an online tool) to convert the Postscript file to a PDF."
+          }
+        ]
+      }
+    ]
+  }
+  
