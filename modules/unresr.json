@@ -42,9 +42,13 @@
           {
             "name": "matd",
             "display_name": "Isotope",
-            "type": "isotope",
+            "type": "list",
             "default": "U235",
-            "help": "<b>'matd'</b><br><br>Material to be processed. Select the isotope and the MAT number will be chosen automatically."
+            "source": {
+              "default": "isotopes.json",
+              "allow_custom": false
+            },
+            "help": "<b>'matd'</b><br><br>Material to be processed. Select from the available isotopes list."
           },
           {
             "name": "temp",
@@ -100,4 +104,3 @@
       }
     ]
   }
-  

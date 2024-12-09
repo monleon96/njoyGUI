@@ -20,8 +20,8 @@ def load_module(module_name):
     model.load_from_file(filepath)
     return model
 
-def load_isotopes():
-    filepath = "resources/isotopes.json"
+def load_json_source(filepath):
+    """Generic function to load any JSON source file"""
     if os.path.exists(filepath):
         with open(filepath, 'r') as f:
             data = json.load(f)

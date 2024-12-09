@@ -5,10 +5,11 @@ from PyQt5.QtWidgets import (
     QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox, 
     QGroupBox, QWidget, QCompleter, QListView, QScrollArea
 )
-from PyQt5.QtCore import Qt, QUrl, QRegExp
-from PyQt5.QtGui import QDesktopServices, QRegExpValidator, QIntValidator, QFont
+from PyQt5.QtCore import Qt, QUrl, QRegExp, QSortFilterProxyModel
+from PyQt5.QtGui import QDesktopServices, QRegExpValidator, QIntValidator, QFont, QStandardItemModel, QStandardItem
+import os
 
-from model import load_isotopes
+from model import load_json_source  
 import config
 from config import get_dialog_element_font  # Import the new font function
 from config import get_button_style, BUTTON_HOVER_COLOR
@@ -21,11 +22,14 @@ class ParameterDialog(QDialog):
         self.parameters = parameters.copy()
         self.module_description = module_description
         self.param_widgets = {}
-        self.isotopes = load_isotopes()
+        self.isotopes = load_json_source("resources/isotopes.json")
         self.setFixedSize(600, 600)
 
         # Set default font size 10 for the entire dialog
         self.setFont(get_dialog_element_font())
+
+        # Determine the absolute path to the resources directory
+        self.resources_path = os.path.join(os.path.dirname(__file__), '..', 'resources')
 
         self.init_ui()
 
@@ -201,38 +205,72 @@ class ParameterDialog(QDialog):
             container.buttons = button_group
             return container
 
-        elif p_type == "isotope":
+        elif p_type == "list":
             combo = QComboBox()
-            isotope_list = sorted(self.isotopes.keys())
+            combo.setEditable(True)  # Allow typing in the combo box
 
-            combo.setEditable(True)
-            combo.addItem("")
-            combo.addItems(isotope_list)
+            # Get parameter definition to access source
+            p_def = self.find_parameter_definition(p_name)
+            source = p_def.get("source", {})
+            valid_items = []
 
-            # Set the font for the combo box and the line edit
+            # Load valid_items from the specified source file
+            if source and "default" in source:
+                source_file = os.path.join(self.resources_path, source["default"])
+                try:
+                    item_list = load_json_source(source_file)
+                except Exception as e:
+                    print(f"Error loading {source_file}: {e}")
+                    item_list = []
+
+                # Handle different JSON structures
+                if isinstance(item_list, dict):
+                    valid_items = item_list.keys()
+                elif isinstance(item_list, list):
+                    valid_items = item_list
+                else:
+                    valid_items = []
+
+            # Set font for the combo box and line edit
             font = config.get_label_font()
             combo.setFont(font)
-            combo.lineEdit().setFont(font)
+            if combo.lineEdit() is not None:
+                combo.lineEdit().setFont(font)
 
+            # Add valid items to the combo box
+            combo.addItems(valid_items)
+            
+            # Set font for each item in the combo box
+            model = combo.model()
+            for i in range(model.rowCount()):
+                item = model.item(i)
+                item.setFont(font)
+
+            # Set up the completer for filtering
+            completer = QCompleter(valid_items, self)
+            completer.setCaseSensitivity(Qt.CaseSensitive)
+            completer.setFilterMode(Qt.MatchContains)  # Filter based on input
+            completer.setCompletionMode(QCompleter.PopupCompletion)
+            completer.popup().setFont(font)  # Set font for the drop-down list
+            combo.setCompleter(completer)
+
+            # Ensure the drop-down list updates while typing
+            def on_text_changed(text):
+                # Update the completer's prefix and show the drop-down
+                completer.setCompletionPrefix(text)
+                completer.complete()
+
+            if combo.lineEdit() is not None:
+                combo.lineEdit().textEdited.connect(on_text_changed)
+
+            # Set the current text
             if p_value is not None:
                 combo.setCurrentText(str(p_value))
             else:
                 combo.setCurrentText("")
 
-            # Assign a custom QListView to the combo
-            view = QListView()
-            view.setFont(font)
-            combo.setView(view)
-
-            # Set up the completer
-            completer = QCompleter(isotope_list, self)
-            completer.setCaseSensitivity(Qt.CaseSensitive)
-            completer.setFilterMode(Qt.MatchContains)
-            completer.popup().setFont(font)
-            combo.setCompleter(completer)
-
-            # Store the valid items list in the combo box
-            combo.valid_items = isotope_list
+            # Store valid_items for optional validation
+            combo.valid_items = valid_items
 
             return combo
 
@@ -384,8 +422,8 @@ class ParameterDialog(QDialog):
                     else:
                         self.parameters.pop(p_name, None)
                 else:
-                    if p_type == "isotope" and value not in widget.valid_items:
-                        self.show_error(f"'{value}' is not a valid isotope.")
+                    if p_type == "list" and value not in widget.valid_items:
+                        self.show_error(f"'{value}' is not a valid option from the list.")
                         return
                     self.parameters[p_name] = value
 

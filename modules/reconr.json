@@ -31,9 +31,13 @@
         {
           "name": "mat",
           "display_name": "Isotope",
-          "type": "isotope",
+          "type": "list",
           "default": "U235",
-          "help": "<b>'mat'</b><br><br>Material to be reconstructed. Select the isotope and the MAT number will be chosen automatically."
+          "source": {
+            "default": "isotopes.json",
+            "allow_custom": false
+          },
+          "help": "<b>'mat'</b><br><br>Material to be reconstructed. Select from the available isotopes list."
         },
         {
           "name": "err",

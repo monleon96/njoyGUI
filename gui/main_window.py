@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
-from model import load_module, load_isotopes
+from model import load_module, load_json_source
 from gui.module_item import ModuleItem
 from gui.module_selection_dialog import ModuleSelectionDialog
 from gui.parameter_dialog import ParameterDialog
@@ -25,8 +25,9 @@ class MainWindow(QMainWindow):
         self.modules_available = modules_available
         self.added_modules = []
         
-        # Load isotopes once
-        self.isotopes = load_isotopes()
+        # Load json files
+        self.isotopes = load_json_source("resources/isotopes.json")
+        self.energies = load_json_source("resources/energies.json")
 
         self.init_ui()
 
@@ -508,9 +509,9 @@ class MainWindow(QMainWindow):
                 if user_iprint is not None:
                     card2_parts.append(str(iprint if iprint is not None else "0"))
 
-                # Build the PURR module
-                lines.append("-- calculate ptables")
-                lines.append("purr")
+                # Build the unresr module
+                lines.append("-- calculate unresolved shelf-shielding")
+                lines.append("unresr")
                 lines.append(f"{nendf} {nin} {nout}")
                 lines.append(" ".join(card2_parts) + " /")
                 if ntemp > 0:
