@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+
+# VSCODE
+.vscode/
+njoyGUI.code-workspace
+
+# Virtual Environment
+myenv/
