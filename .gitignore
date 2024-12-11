@@ -8,3 +8,6 @@ __pycache__/
 
 # Virtual Environment
 myenv/
+
+# Development notes
+dev_notes.md

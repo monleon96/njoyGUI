@@ -1,0 +1,13 @@
+{
+  "none": 0,
+  "arbitrary (read in)": 1,
+  "csewg 94-group": 2,
+  "lanl 12-group": 3,
+  "steiner 21-group gamma-ray": 4,
+  "straker 22-group": 5,
+  "lanl 48-group": 6,
+  "lanl 24-group": 7,
+  "vitamin-c 36-group": 8,
+  "vitamin-e 38-group": 9,
+  "vitamin-j 42-group": 10
+}

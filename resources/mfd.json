@@ -1,0 +1,23 @@
+{
+  "cross section or yield vector": 3,
+  "fission chi by short-cut method": 5,
+  "neutron-neutron matrix (mf4/5)": 6,
+  "neutron-neutron matrix (mf6)": 8,
+  "photon prod. xsec (photon yields given, mf12)": 12,
+  "photon prod. xsec (photon xsecs given, mf13)": 13,
+  "neutron-gamma matrix (photon yields given)": 16,
+  "neutron-gamma matrix (photon xsecs given)": 17,
+  "neutron-gamma matrix (mf6)": 18,
+  "proton production matrix (mf6)": 21,
+  "deuteron production (mf6)": 22,
+  "triton production (mf6)": 23,
+  "he-3 production (mf6)": 24,
+  "alpha production (mf6)": 25,
+  "residual nucleus (>a4) production (mf6)": 26,
+  "proton production matrix (mf4)": 31,
+  "deuteron production (mf4)": 32,
+  "triton production (mf4)": 33,
+  "he-3 production (mf4)": 34,
+  "alpha production (mf4)": 35,
+  "residual nucleus (>a4) production (mf4)": 36
+}

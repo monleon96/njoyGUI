@@ -1,6 +1,6 @@
 {
   "name": "GROUPR",
-  "description": "<b>GROUPR</b><br><br>The GROUPR module computes group-to-group scattering matrices and anisotropic photon production matrices for neutrons using evaluated nuclear data from ENDF/B-IV and later. With ENDF-6 format files, photonuclear data and incoming and outgoing charged particles can also be processed. Special features are provided for ratio quantities (for example, mu, nu, or photon yield), inverse velocity, delayed neutron spectra by time group, and anisotropic thermal neutron scattering. Fission is represented as a group-to-group matrix for full generality. Scattering matrices and photon production matrices may be self-shielded if desired.<br><ul><li>The Bondarenko narrow-resonance weighting scheme is normally used.</li><li>Optionally, a weighting flux can be computed for various mixtures of heavy absorbers with light moderators.</li><li>An accurate pointwise solution of the integral slowing down equation is used, which is normally called on to account for intermediate resonance effects in the epithermal range.</li><li>Neutron data and photon-production data are processed in a parallel manner using the same weight function and quadrature scheme, ensuring consistent cross sections for coupled neutron-photon problems.</li><li>Two-body scattering is computed with a center-of-mass (CM) Gaussian quadrature, which provides accurate results even for small Legendre components of the group-to-group matrix.</li><li>User conveniences include free-form input and complete control over which reactions are processed. The neutron group structure, photon group structure, and weight function can each be read in or set to one of the internal options.</li><li>Output can be printed and/or written to an output “groupwise-ENDF” (GENDF) file for further processing by a formatting module (DTFR, CCCCR, MATXSR, WIMSR), by the covariance module (ERRORR), or by the MCNP continuous-energy Monte Carlo module (ACER).</li></ul>",
+  "description": "<b>GROUPR</b><br><br>The GROUPR module computes group-to-group scattering matrices and anisotropic photon production matrices for neutrons using evaluated nuclear data from ENDF/B-IV and later. With ENDF-6 format files, photonuclear data and incoming and outgoing charged particles can also be processed. Special features are provided for ratio quantities (for example, mu, nu, or photon yield), inverse velocity, delayed neutron spectra by time group, and anisotropic thermal neutron scattering. Fission is represented as a group-to-group matrix for full generality. Scattering matrices and photon production matrices may be self-shielded if desired.<br><ul><li>The Bondarenko narrow-resonance weighting scheme is normally used.</li><li>Optionally, a weighting flux can be computed for various mixtures of heavy absorbers with light moderators.</li><li>An accurate pointwise solution of the integral slowing down equation is used, which is normally called on to account for intermediate resonance effects in the epithermal range.</li><li>Neutron data and photon-production data are processed in a parallel manner using the same weight function and quadrature scheme, ensuring consistent cross sections for coupled neutron-photon problems.</li><li>Two-body scattering is computed with a center-of-mass (CM) Gaussian quadrature, which provides accurate results even for small Legendre components of the group-to-group matrix.</li><li>User conveniences include free-form input and complete control over which reactions are processed. The neutron group structure, photon group structure, and weight function can each be read in or set to one of the internal options.</li><li>Output can be printed and/or written to an output groupwise-ENDF (GENDF) file for further processing by a formatting module (DTFR, CCCCR, MATXSR, WIMSR), by the covariance module (ERRORR), or by the MCNP continuous-energy Monte Carlo module (ACER).</li></ul>",
   "tooltip": "Calculate group-to-group scattering and photon production matrices.",
   "cards": [
     {
@@ -32,7 +32,7 @@
           "name": "ngout1",
           "display_name": "gendf input tape",
           "type": "int",
-          "default": -23,
+          "default": 0,
           "constraints": {
             "min": -99,
             "max": 99
@@ -43,7 +43,7 @@
           "name": "ngout2",
           "display_name": "gendf ouput tape",
           "type": "int",
-          "default": -23,
+          "default": 0,
           "constraints": {
             "min": -99,
             "max": 99
@@ -62,24 +62,48 @@
           "help": "<b>'matb'</b><br><br>Material to be processed. Select from the available isotopes list."
         },
         {
-          "name": "nbin",
-          "display_name": "Number of bins",
-          "type": "int",
-          "default": 20,
-          "constraints": {
-          "min": 1
+          "name": "ign",
+          "display_name": "Neutron group structure",
+          "type": "list",
+          "default": "vitamin-j 175-group",
+          "source": {
+            "default": "n-egroups.json",
+            "allow_custom": false
           },
-          "help": "<b>'nplot'</b><br><br>Number of bins for probability tables."
+          "help": "<b>'ign'</b><br><br>Energy group structure for neutron data."
         },
         {
-          "name": "nladr",
-          "display_name": "Number of ladders",
-          "type": "int",
-          "default": 64,
-          "constraints": {
-              "min": 1
+          "name": "igg",
+          "display_name": "Photon group structure",
+          "type": "list",
+          "default": "none",
+          "source": {
+            "default": "g-egroups.json",
+            "allow_custom": false
           },
-          "help": "<b>'nladr'</b><br><br>Number of resonance ladders for probability tables (power of 2)."
+          "help": "<b>'igg'</b><br><br>Energy group structure for photon data."
+        },
+        {
+          "name": "iwt",
+          "display_name": "Weight function",
+          "type": "list",
+          "default": "constant",
+          "source": {
+            "default": "weight-functions.json",
+            "allow_custom": false
+          },
+          "help": "<b>'iwt'</b><br><br>Weight function for neutron data."
+        },
+        {
+          "name": "lord",
+          "display_name": "Legendre order",
+          "type": "int",
+          "default": 1,
+          "constraints": {
+            "min": 0,
+            "max": 99
+          },
+          "help": "<b>'lord'</b><br><br>Legendre order"
         },
         {
           "name": "temp",
@@ -115,16 +139,16 @@
             "options": ["min", "max"]
           },
           "help": "<b>'iprint'</b><br><br>Print flag<br><br>(default=max)"
-          },
+        },
         {
-          "name": "nunx",
-          "display_name": "Energy points",
-          "type": "int",
+          "name": "ismooth",
+          "display_name": "Smoothing",
+          "type": "option",
           "default": null,
           "constraints": {
-            "min": 1
+            "options": ["ON", "OFF"]
           },
-          "help": "<b>'nunx'</b><br><br>Number of energy points desired.<br><br>(default=0=all)"
+          "help": "<b>'ismooth'</b><br><br>Smoothing operation. Set to ON to enable sqrt(e) smoothing for MF6 cm emission spectra at low energies and for histogram delayed neutron spectra at low energies.<br><br>(default=ON)"
         }
       ]
     },
@@ -138,6 +162,35 @@
         },
         {
           "name": "nsigz",
+          "default": 1,
+          "type": "auto"
+        },
+        {
+          "name": "Automatic",
+          "parameters": [
+            {
+              "name": "label",
+              "type": "auto"
+            }
+          ]
+        },
+        {
+          "name": "ngn",
+          "default": 1,
+          "type": "auto"
+        },
+        {
+          "name": "egn",
+          "default": 1,
+          "type": "auto"
+        },
+        {
+          "name": "ngg",
+          "default": 1,
+          "type": "auto"
+        },
+        {
+          "name": "egg",
           "default": 1,
           "type": "auto"
         }

@@ -27,7 +27,10 @@ class MainWindow(QMainWindow):
         
         # Load json files
         self.isotopes = load_json_source("resources/isotopes.json")
-        self.energies = load_json_source("resources/energies.json")
+        self.negroups = load_json_source("resources/energies.json")
+        self.gegroups = load_json_source("resources/energies.json")
+        self.weights = load_json_source("resources/weight-functions.json")
+        self.mfds = load_json_source("resources/mfd.json")
 
         self.init_ui()
 
@@ -269,7 +272,7 @@ class MainWindow(QMainWindow):
                     tempr = 0.0
                 
                 # Always show temperature in label
-                label = f'reconstructed data for {isotope} @ {tempr} K'
+                label = f"'reconstructed data for {isotope} @ {tempr} K'"
 
                 # Card 3
                 tolerance_str = p.get("err", "0.001")
@@ -530,6 +533,76 @@ class MainWindow(QMainWindow):
                 lines.append("-- calculate production")
                 lines.append("gaspr")
                 lines.append(f"{nendf} {nin} {nout}")
+
+            elif name == "GROUPR":
+                # Card 1
+                nendf = p.get("nendf", "")
+                npend = p.get("npend", "")
+                ngout1 = p.get("ngout1", "")
+                ngout2 = p.get("ngout2", "")
+                lord = p.get("lord", "")
+
+                # Card 2
+                mat_str = p.get("matd", "U235")
+                mat_num = self.isotopes.get(mat_str, 9228)
+                ign_str = p.get("ign", "vitamin-j 175-group")
+                ign_num = self.negroups.get(ign_str, 17)
+                igg_str = p.get("igg", "none")
+                igg_num = self.gegroups.get(igg_str, 0)
+                iwt_str = p.get("igg", "constant")
+                iwt_num = self.weights.get(iwt_str, 2)
+                
+                # Card 3
+                label = f"'multigroup data'"
+
+                # Process temperatures
+                temp_str = str(p.get("temp", ""))  # Ensure temp is a string
+                temps = temp_str.split()
+                ntemp = len(temps)
+                
+                # Process sigma zero values
+                sigz_str = str(p.get("sigz", ""))  # Ensure sigz is a string
+                sigz_values = sigz_str.split()
+                nsigz = len(sigz_values)
+                
+                # Get optional parameters
+                user_iprint = p.get("iprint")
+                user_ismooth = p.get("ismooth")
+                
+                # Convert text options to numbers - fixed iprint handling
+                if user_iprint == "min":
+                    iprint = 0
+                elif user_iprint == "max":
+                    iprint = 1
+                else:
+                    iprint = None
+                if user_ismooth == "OFF":
+                    ismooth = 0
+                elif user_ismooth == "ON":
+                    ismooth = 1
+                else:
+                    ismooth = None
+                    
+                # Build card 2 parameters
+                card2_parts = [str(mat_num), str(ntemp), str(nsigz), str(ign_num), str(igg_num), str(iwt_num), str(lord)]
+                
+                # Add iprint and nunx if either is specified
+                if user_ismooth is not None or user_iprint is not None:
+                    card2_parts.append(str(iprint if iprint is not None else "1"))
+                    card2_parts.append(str(ismooth if ismooth is not None else ""))
+
+                # Build the GROUPR module
+                lines.append("-- calculate multigroup data")
+                lines.append("groupr")
+                lines.append(f"{nendf} {npend} {ngout1} {ngout2}")
+                lines.append(" ".join(card2_parts) + " /")
+                lines.append(f"{label} /")
+                if ntemp > 0:
+                    lines.append(" ".join(temps) + " /")
+                if nsigz > 0:
+                    lines.append(" ".join(sigz_values) + " /")
+                lines.append("0 /")
+                lines.append("0 /")
 
             elif name == "ACER":
                 # Card 1
