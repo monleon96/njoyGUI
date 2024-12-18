@@ -116,15 +116,37 @@
           "help": "<b>'temp'</b><br><br>Temperatures in Kelvin (including zero)."
         },
         {
-            "name": "sigz",
-            "display_name": "Dilution values",
-            "type": "multi",
-            "default": "1e+10",
-            "constraints": {
-              "min": 0.0
-            },
-            "help": "<b>'sigz'</b><br><br>Dilution values (including infinity)"
-          }
+          "name": "sigz",
+          "display_name": "Dilution values",
+          "type": "multi",
+          "default": "1e+10",
+          "constraints": {
+            "min": 0.0
+          },
+          "help": "<b>'sigz'</b><br><br>Dilution values (including infinity)"
+        },
+        {
+          "name": "mfd-este hay que juntarlo con mtd para que pueda ser escalable en condiciones",
+          "display_name": "MF",
+          "type": "multi_int",
+          "default": "",
+          "constraints": {
+            "min": 1,
+            "max": 40
+          },
+          "help": "<b>'mfd'</b><br><br>Specify multiple MF numbers."
+        },
+        {
+          "name": "mtd",
+          "display_name": "MT",
+          "type": "multi_int",
+          "default": "",
+          "constraints": {
+            "min": 1,
+            "max": 1000
+          },
+          "help": "<b>'mtd'</b><br><br>Specify multiple MT numbers."
+        }
       ]
     },
     {
