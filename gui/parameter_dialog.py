@@ -430,7 +430,7 @@ class ParameterDialog(QDialog):
         QMessageBox.warning(self, "Invalid Input", message)
 
     def open_pdf(self):
-        pdf_path = f"resources/{self.module_name}.pdf"
+        pdf_path = f"resources/{self.module_name.lower()}.pdf"
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(pdf_path)):
             QMessageBox.warning(self, "PDF not found", f"Could not open {pdf_path}. Ensure the file exists.")
 

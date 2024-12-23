@@ -15,7 +15,12 @@ class ModuleModel:
         self.cards = data.get("cards", [])
 
 def load_module(module_name):
-    filepath = os.path.join("modules", f"{module_name}.json")
+    # Get the directory where the script is located
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Construct absolute path to the modules directory
+    modules_dir = os.path.join(current_dir, "modules")
+    # Create full path to the module file
+    filepath = os.path.join(modules_dir, f"{module_name.lower()}.json")
     model = ModuleModel(module_name)
     model.load_from_file(filepath)
     return model
